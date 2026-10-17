@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ledgy</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%232a78d6'/><path d='M9 22V14M16 22V9M23 22v-5' stroke='white' stroke-width='3.2' stroke-linecap='round'/></svg>">
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/vendor/chart.umd.js"></script>
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <span class="logo" aria-hidden="true"></span>
+      <span>Ledgy</span>
+      <select id="yearSelect" aria-label="Year"></select>
+    </div>
+    <div class="actions">
+      <span id="saveState" class="save-state" aria-live="polite"></span>
+      <button id="newYearBtn" class="btn ghost">New year</button>
+      <button id="importBtn" class="btn ghost" title="Import an .xlsx file">Import</button>
+      <a id="exportBtn" class="btn ghost" href="#" download title="Download as .xlsx with formulas">Export</a>
+      <button id="settingsBtn" class="btn ghost" aria-label="Settings">Settings</button>
+    </div>
+  </header>
+
+  <nav id="tabs" class="tabs" role="tablist"></nav>
+  <div id="banner" class="banner" hidden></div>
+  <main id="view"></main>
+
+  <dialog id="importDlg">
+    <form method="dialog" id="importForm">
+      <h2>Import spreadsheet</h2>
+      <p class="muted">Use a workbook with sheets JAN…DEC and Summary in the same layout as your budget file.</p>
+      <label>File <input type="file" id="importFile" accept=".xlsx" required></label>
+      <label>Year <input type="number" id="importYear" min="1900" max="3000" required></label>
+      <div id="importMsg" class="dlg-msg"></div>
+      <div class="dlg-actions">
+        <button value="cancel" class="btn ghost" formnovalidate>Close</button>
+        <button id="importGo" class="btn primary" value="default">Import</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="newDlg">
+    <form method="dialog" id="newForm">
+      <h2>New year</h2>
+      <label>Year <input type="number" id="newYear" min="1900" max="3000" required></label>
+      <label>Start from
+        <select id="newFrom"><option value="">Blank template</option></select>
+      </label>
+      <p class="muted">Copying a year takes the Needs labels and the Savings rows of its December. Amounts stay blank.</p>
+      <div class="dlg-actions">
+        <button value="cancel" class="btn ghost" formnovalidate>Cancel</button>
+        <button class="btn primary" value="default">Create</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="settingsDlg">
+    <form method="dialog" id="settingsForm">
+      <h2>Settings for <span id="setYearLbl"></span></h2>
+      <fieldset>
+        <legend>Budgets (percent of income)</legend>
+        <div class="grid3">
+          <label>Wants % <input type="number" step="any" name="wantsRate"></label>
+          <label>Needs % <input type="number" step="any" name="needsRate"></label>
+          <label>Needs extra $ <input type="number" step="any" name="needsExtra"></label>
+          <label>Savings % <input type="number" step="any" name="savingsRate"></label>
+          <label>Roth start balance $ <input type="number" step="any" name="rothStart"></label>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Summary behavior (spreadsheet defaults are off)</legend>
+        <label class="check"><input type="checkbox" name="hsa401kIncludeDec"> Include DEC in the HSA and 401k totals</label>
+        <label class="check"><input type="checkbox" name="excludeBank"> Do not count bank savings (row 4) in “Retirement/HSA”</label>
+      </fieldset>
+      <p class="muted"><a id="backupLink" href="#" download>Download JSON backup</a></p>
+      <div class="dlg-actions">
+        <button type="button" id="deleteYearBtn" class="btn danger">Delete year</button>
+        <span class="spacer"></span>
+        <button value="cancel" class="btn ghost" formnovalidate>Cancel</button>
+        <button class="btn primary" value="default">Save</button>
+      </div>
+    </form>
+  </dialog>
+</body>
+</html>
