@@ -322,7 +322,7 @@ function updateMonthCharts(m, c) {
 function renderSummary() {
   const s = calcSummary(doc);
   const cols = [
-    ['Total income', s.totalIncome, 'A2'], ['Total Wants', s.totalWants, 'B2'], ['Total Needs', s.totalNeeds, 'C2'],
+    ['Total income', s.totalIncome], ['Total Wants', s.totalWants, 'B2'], ['Total Needs', s.totalNeeds, 'C2'],
     ['Retirement/HSA', s.retirementHsa, 'D2'], ['Bank/Fidelity Savings', s.bankSavings, 'E2'],
     ['Roth', s.roth, 'F2'], ['HSA', s.hsa, 'G2'], ['401k', s.k401, 'H2'],
   ];
