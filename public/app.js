@@ -169,7 +169,7 @@ function renderMonth() {
   const m = doc.months[tab];
   $('#view').innerHTML = `
     <div class="kpis">
-      <div class="kpi"><div class="k">Income <code>M1</code></div><input class="v" id="income" inputmode="decimal" value="${esc(amtShow(m.income))}" placeholder="0.00" aria-label="Income"></div>
+      <div class="kpi"><div class="k">Income </div><input class="v" id="income" inputmode="decimal" value="${esc(amtShow(m.income))}" placeholder="0.00" aria-label="Income"></div>
       <div class="kpi"><div class="k">Allocated <code>M2</code></div><div class="v" data-k="allocated"></div></div>
       <div class="kpi"><div class="k">Allocated / income <code>M3</code></div><div class="v" data-k="allocatedPct"></div></div>
       <div class="kpi"><div class="k">Remaining <code>N3</code></div><div class="v" data-k="remaining"></div></div>
