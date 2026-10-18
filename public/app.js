@@ -322,9 +322,9 @@ function updateMonthCharts(m, c) {
 function renderSummary() {
   const s = calcSummary(doc);
   const cols = [
-    ['Total income', s.totalIncome], ['Total Wants', s.totalWants, 'B2'], ['Total Needs', s.totalNeeds, 'C2'],
-    ['Retirement/HSA', s.retirementHsa, 'D2'], ['Bank/Fidelity Savings', s.bankSavings, 'E2'],
-    ['Roth', s.roth, 'F2'], ['HSA', s.hsa, 'G2'], ['401k', s.k401, 'H2'],
+    ['Total income', s.totalIncome], ['Total Wants', s.totalWants], ['Total Needs', s.totalNeeds],
+    ['Retirement/HSA', s.retirementHsa], ['Bank/Fidelity Savings', s.bankSavings],
+    ['Roth', s.roth], ['HSA', s.hsa], ['401k', s.k401],
   ];
   const rows = s.months.map((c, i) => `<tr data-goto="${i}" style="cursor:pointer">
       <td>${MONTHS[i]}</td><td>${c.hasIncome ? fmt(c.income) : '—'}</td>
@@ -335,7 +335,7 @@ function renderSummary() {
   $('#view').innerHTML = `
     <section class="card"><div class="table-wrap"><table class="sum-table">
       <thead><tr>${cols.map(([h]) => `<th>${h}</th>`).join('')}</tr></thead>
-      <tbody><tr>${cols.map(([, v, ref]) => `<td>${usd(v)}<span class="cell-ref">${ref}</span></td>`).join('')}</tr></tbody>
+      <tbody><tr>${cols.map(([, v, ref]) => `<td>${usd(v)}${ref ? `<span class="cell-ref">${ref}</span>` : ''}</td>`).join('')}</tr></tbody>
     </table></div></section>
     <div class="summary-grid">
       <section class="card chart-card">
