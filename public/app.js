@@ -115,7 +115,7 @@ function emptyState() {
   return `<div class="empty">
     <h1>No budget yet</h1>
     <p class="muted">Import your spreadsheet to bring in all months, or start a blank year. Each month uses the same layout: Wants, Needs and Savings with budgets from your income.</p>
-    <div class="btns"><button class="btn primary" data-act="import">Import .xlsx</button><button class="btn" data-act="new">Start a new year</button></div>
+    <div class="btns"><button class="btn primary" data-act="import">Import .xlsx</button><button class="btn tonal" data-act="new">Start a new year</button></div>
   </div>`;
 }
 
@@ -232,8 +232,8 @@ function chartTheme() {
   Chart.defaults.borderColor = cssVar('--line');
 }
 const tooltip = (label) => ({
-  backgroundColor: cssVar('--surface'), titleColor: cssVar('--text'), bodyColor: cssVar('--text-2'),
-  borderColor: cssVar('--line-strong'), borderWidth: 1, padding: 10, boxPadding: 4, usePointStyle: true,
+  backgroundColor: cssVar('--tooltip-bg'), titleColor: cssVar('--tooltip-fg'), bodyColor: cssVar('--tooltip-fg'),
+  cornerRadius: 4, padding: 8, boxPadding: 4, usePointStyle: true,
   callbacks: { label },
 });
 
@@ -592,5 +592,7 @@ $('#deleteYearBtn').addEventListener('click', async () => {
 });
 
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => doc && render());
+// Charts draw text on canvas, so redraw once the web font is ready.
+document.fonts?.ready.then(() => doc && render());
 
 loadYears().catch((e) => { $('#view').innerHTML = `<div class="empty"><h1>Cannot reach the server</h1><p class="muted">${esc(e.message)}</p></div>`; });
