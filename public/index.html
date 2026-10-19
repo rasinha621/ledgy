@@ -72,16 +72,16 @@
           <label>Needs % <input type="number" step="any" name="needsRate" style="width:100px"></label>
           <label>Wants % <input type="number" step="any" name="wantsRate" style="width:100px"></label>
           <label>Savings % <input type="number" step="any" name="savingsRate" style="width:100px"></label>
-          <label>Needs extra $ <input type="text" inputmode="decimal" name="needsExtra" style="width:100px"></label>
-          <label>Roth start balance $ <input type="text" inputmode="decimal" name="rothStart"></label>
+          <label>Needs extra $ <input type="number" step="any" name="needsExtra" style="width:100px"></label>
+          <label>Roth start balance $ <input type="number" step="any" name="rothStart"></label>
         </div>
       </fieldset>
       <fieldset>
         <legend>Annual contribution limits (0 = not set)</legend>
         <div class="grid3">
-          <label>401k limit $ <input type="text" inputmode="decimal" name="limit401k" style="width:100px"></label>
-          <label>HSA limit $ <input type="text" inputmode="decimal" name="limitHsa" style="width:100px"></label>
-          <label>Roth limit $ <input type="text" inputmode="decimal" name="limitRoth" style="width:100px"></label>
+          <label>401k limit $ <input type="number" step="any" min="0" name="limit401k" style="width:100px"></label>
+          <label>HSA limit $ <input type="number" step="any" min="0" name="limitHsa" style="width:100px"></label>
+          <label>Roth limit $ <input type="number" step="any" min="0" name="limitRoth" style="width:100px"></label>
         </div>
       </fieldset>
       <fieldset>

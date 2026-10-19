@@ -572,7 +572,7 @@ $('#settingsBtn').addEventListener('click', () => {
 });
 $('#settingsForm').addEventListener('submit', (e) => {
   if (e.submitter?.value === 'cancel') return;
-  const f = e.target; const num = (v, d) => { const x = Number(String(v).replace(/[$,\s]/g, '')); return String(v).trim() === '' || !Number.isFinite(x) ? d : x; };
+  const f = e.target; const num = (v, d) => (v === '' || !Number.isFinite(Number(v)) ? d : Number(v));
   const s = doc.settings;
   doc.settings = {
     ...s,
