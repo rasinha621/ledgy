@@ -34,12 +34,23 @@
   <div id="banner" class="banner" hidden></div>
   <main id="view"></main>
 
+  <dialog id="msgDlg" class="alert" aria-labelledby="msgTitle" aria-describedby="msgText">
+    <form method="dialog">
+      <h2 id="msgTitle"></h2>
+      <p id="msgText"></p>
+      <div class="dlg-actions">
+        <button value="cancel" id="msgCancel" class="btn ghost" formnovalidate>Cancel</button>
+        <button value="ok" id="msgOk" class="btn primary">OK</button>
+      </div>
+    </form>
+  </dialog>
+
   <dialog id="importDlg">
     <form method="dialog" id="importForm">
       <h2>Import spreadsheet</h2>
       <p class="muted">Use a workbook with sheets JAN…DEC and Summary in the same layout as your budget file.</p>
-      <label>File <input type="file" id="importFile" accept=".xlsx" required></label>
-      <label>Year <input type="number" id="importYear" min="1900" max="3000" required></label>
+      <label class="tf file"><input type="file" id="importFile" accept=".xlsx" required><span>File</span></label>
+      <label class="tf"><input type="number" id="importYear" min="1900" max="3000" required placeholder=" "><span>Year</span></label>
       <div id="importMsg" class="dlg-msg"></div>
       <div class="dlg-actions">
         <button value="cancel" class="btn ghost" formnovalidate>Close</button>
@@ -51,14 +62,30 @@
   <dialog id="newDlg">
     <form method="dialog" id="newForm">
       <h2>New year</h2>
-      <label>Year <input type="number" id="newYear" min="1900" max="3000" required></label>
-      <label>Start from
-        <select id="newFrom"><option value="">Blank template</option></select>
-      </label>
+      <label class="tf"><input type="number" id="newYear" min="1900" max="3000" required placeholder=" "><span>Year</span></label>
+      <label class="tf sel"><select id="newFrom"><option value="">Blank template</option></select><span>Start from</span></label>
       <p class="muted">Copying a year takes the Needs labels and the Savings rows of its December. Amounts stay blank.</p>
       <div class="dlg-actions">
         <button value="cancel" class="btn ghost" formnovalidate>Cancel</button>
         <button class="btn primary" value="default">Create</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="listDlg">
+    <form method="dialog" id="listForm">
+      <h2 id="listDlgTitle">New summation list</h2>
+      <label class="tf"><input name="title" required maxlength="60" autocomplete="off" placeholder=" "><span>Name</span></label>
+      <fieldset>
+        <legend>Counts as</legend>
+        <label class="check"><input type="radio" name="group" value="needs" checked> Need</label>
+        <label class="check"><input type="radio" name="group" value="wants"> Want</label>
+        <label class="check"><input type="radio" name="group" value="savings"> Saving</label>
+      </fieldset>
+      <p class="muted">Rows in that column can total this list by typing its name or picking it in the amount box.</p>
+      <div class="dlg-actions">
+        <button value="cancel" class="btn ghost" formnovalidate>Cancel</button>
+        <button class="btn primary" value="default">Save</button>
       </div>
     </form>
   </dialog>
@@ -69,17 +96,20 @@
       <fieldset>
         <legend>Budgets (percent of income)</legend>
         <div class="grid3">
-          <label>Wants % <input type="number" step="any" name="wantsRate" style="width:100px"></label>
-          <label>Needs % <input type="number" step="any" name="needsRate" style="width:100px"></label>
-          <label>Needs extra $ <input type="number" step="any" name="needsExtra" style="width:100px"></label>
-          <label>Savings % <input type="number" step="any" name="savingsRate" style="width:100px"></label>
-          <label>Roth start balance $ <input type="number" step="any" name="rothStart"></label>
+          <label class="tf"><input type="number" step="any" name="needsRate" placeholder=" "><span>Needs %</span></label>
+          <label class="tf"><input type="number" step="any" name="wantsRate" placeholder=" "><span>Wants %</span></label>
+          <label class="tf"><input type="number" step="any" name="savingsRate" placeholder=" "><span>Savings %</span></label>
+          <label class="tf"><input type="number" step="any" name="needsExtra" placeholder=" "><span>Needs extra $</span></label>
+          <label class="tf"><input type="number" step="any" name="rothStart" placeholder=" "><span>Roth start balance $</span></label>
         </div>
       </fieldset>
       <fieldset>
-        <legend>Summary behavior (spreadsheet defaults are off)</legend>
-        <label class="check"><input type="checkbox" name="hsa401kIncludeDec"> Include DEC in the HSA and 401k totals</label>
-        <label class="check"><input type="checkbox" name="excludeBank"> Do not count bank savings (row 4) in “Retirement/HSA”</label>
+        <legend>Annual contribution limits</legend>
+        <div class="grid3">
+          <label class="tf"><input type="number" step="any" min="0" name="limit401k" placeholder=" "><span>401k limit $</span></label>
+          <label class="tf"><input type="number" step="any" min="0" name="limitHsa" placeholder=" "><span>HSA limit $</span></label>
+          <label class="tf"><input type="number" step="any" min="0" name="limitRoth" placeholder=" "><span>Roth limit $</span></label>
+        </div>
       </fieldset>
       <p class="muted"><a id="backupLink" href="#" download>Download JSON backup</a></p>
       <div class="dlg-actions">

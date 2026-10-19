@@ -1,4 +1,4 @@
-import { MONTHS, calcMonth, calcSummary, needsRowValue, n } from '/lib/calc.js';
+import { MONTHS, calcMonth, calcSummary, needsRowValue, listRows, sumRows, n } from '/lib/calc.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -20,6 +20,22 @@ const SEC = {
   groceries: { title: 'Groceries', color: '--needs', cols: 'Q / R', ph: 'Note' },
   transit: { title: 'Transit', color: '--needs', cols: 'S / T', ph: 'Note' },
 };
+const BASE_SECS = ['wants', 'needs', 'savings', 'groceries', 'transit'];
+// Lists whose total can feed a Needs row: Groceries, Transit and the ones added to this month.
+const LINKABLE = ['wants', 'needs', 'savings']; // sections whose rows can total a list
+const GROUP_LABEL = { needs: 'Need', wants: 'Want', savings: 'Saving' };
+// All lists of the current month. Groceries and Transit are Needs lists; the rest carry their own group.
+const sumLists = (group, m = doc.months[tab]) => [
+  { key: 'groceries', title: 'Groceries', group: 'needs' }, { key: 'transit', title: 'Transit', group: 'needs' },
+  ...(m?.sections || []).map((s) => ({ ...s, group: s.group || 'needs' })),
+].filter((l) => !group || l.group === group);
+const listInfo = (key) => sumLists().find((l) => l.key === key);
+const findList = (text, group) => {
+  const q = String(text).trim().replace(/^Σ\s*/, '').toLowerCase();
+  return q ? sumLists(group).find((l) => l.title.toLowerCase() === q) : undefined;
+};
+const secMeta = (sec) => SEC[sec] || { title: listInfo(sec)?.title ?? sec, color: `--${listInfo(sec)?.group ?? 'needs'}`, ph: 'Note' };
+const rowsOf = (month, sec) => (BASE_SECS.includes(sec) ? month[sec] : ((month.custom ||= {})[sec] ||= []));
 const SUMMARY_SAVINGS = ['401k', 'HSA', 'Roth', 'Bank/Fidelity Savings'];
 
 let years = [];
@@ -128,34 +144,31 @@ function renderTabs() {
 }
 
 function rowHtml(sec, r, i, month) {
-  const kindSel = sec === 'needs'
-    ? `<select class="kind ${r.kind !== 'manual' ? 'on' : ''}" data-i="${i}" title="Typed value, or the total of the Groceries or Transit list" aria-label="Row type">
-        <option value="manual" ${r.kind === 'manual' ? 'selected' : ''}>#</option>
-        <option value="groceries" ${r.kind === 'groceries' ? 'selected' : ''}>ΣG</option>
-        <option value="transit" ${r.kind === 'transit' ? 'selected' : ''}>ΣT</option>
-      </select>` : '';
-  const amount = sec === 'needs' && r.kind !== 'manual'
-    ? `<div class="calc" data-calc="${i}" title="=SUM(${r.kind === 'groceries' ? 'Q:Q' : 'S:S'})">${fmt(needsRowValue(r, month))}</div>`
-    : `<input class="amt ${n(r.amount) < 0 ? 'neg' : ''}" data-i="${i}" inputmode="decimal" value="${esc(amtShow(r.amount))}" aria-label="Amount"${sec === 'savings' && i < 4 ? ` title="Summary: ${SUMMARY_SAVINGS[i]}"` : ''}>`;
-  return `<li class="row ${sec === 'needs' ? 'with-kind' : ''}" data-i="${i}">
-    ${amount}
-    <input class="lbl" data-i="${i}" value="${esc(r.label)}" placeholder="${SEC[sec].ph}" aria-label="${SEC[sec].ph}">
-    ${kindSel}
+  const link = LINKABLE.includes(sec) && r.kind && r.kind !== 'manual' ? listInfo(r.kind) : null;
+  const val = link ? fmt(needsRowValue(r, month)) : esc(amtShow(r.amount));
+  const sum = sec === 'savings' && i < 4 ? `Summary: ${SUMMARY_SAVINGS[i]}. ` : '';
+  const hint = LINKABLE.includes(sec) ? ` title="${sum}${link ? `Total of ${esc(link.title)}. Type a number to unlink.` : 'Type an amount, or pick a list to total'}"` : '';
+  return `<li class="row" data-i="${i}">
+    <input class="amt ${n(r.amount) < 0 ? 'neg' : ''} ${link ? 'linked' : ''}" data-i="${i}" inputmode="decimal" autocomplete="off" value="${val}" aria-label="Amount"${hint}>
+    <input class="lbl" data-i="${i}" value="${esc(r.label)}" placeholder="${link ? `Σ ${esc(link.title)}` : secMeta(sec).ph}" aria-label="${secMeta(sec).ph}">
     <button class="icon-btn del" data-i="${i}" aria-label="Delete row" title="Delete row">✕</button>
   </li>`;
 }
 
 function cardHtml(sec, month) {
-  const rows = month[sec];
+  const rows = rowsOf(month, sec);
+  const meta = secMeta(sec);
+  const custom = !BASE_SECS.includes(sec);
   const budgeted = ['wants', 'needs', 'savings'].includes(sec);
   const sub = budgeted
     ? `<div class="card-sub"><span>Budget <span data-k="${sec}Budget"></span></span><span data-k="${sec}Pct"></span></div>
-       <div class="meter" data-meter="${sec}"><span style="background:var(${SEC[sec].color})"></span></div>`
+       <div class="meter" data-meter="${sec}"><span style="background:var(${meta.color})"></span></div>`
     : `<div class="feeds" data-feeds="${sec}"></div>`;
   const foot = sec === 'savings' ? '<div class="feeds" style="padding:0 14px 10px">Rows 1–4 feed the Summary: 401k, HSA, Roth, Bank savings.</div>' : '';
   return `<section class="card" data-sec="${sec}">
     <div class="card-h">
-      <div class="card-t"><span class="swatch" style="background:var(${SEC[sec].color})"></span>${SEC[sec].title}
+      <div class="card-t"><span class="swatch" style="background:var(${meta.color})"></span>${esc(meta.title)}
+        ${custom ? `<button class="icon-btn sec-btn" data-act="sec-rename" data-key="${sec}" aria-label="Edit list" title="Edit list">✎</button><button class="icon-btn sec-btn" data-act="sec-del" data-key="${sec}" aria-label="Delete list" title="Delete list">✕</button>` : ''}
         <span class="total" data-k="${sec}Total"></span></div>
       ${sub}
     </div>
@@ -175,7 +188,8 @@ function renderMonth() {
       <div class="kpi"><div class="k">Amount remaining </div><div class="v" data-k="remaining"></div></div>
     </div>
     <div class="month-grid">
-      <div class="cols">${['wants', 'needs', 'savings', 'groceries', 'transit'].map((s) => cardHtml(s, m)).join('')}</div>
+      <div class="cols">${[...BASE_SECS, ...(m.sections || []).map((s) => s.key)].map((s) => cardHtml(s, m)).join('')}
+        <button class="add-list" data-act="sec-add">+ Add new category</button></div>
       <aside class="side">
         <section class="card chart-card">
           <h3>Spending breakdown</h3>
@@ -185,7 +199,7 @@ function renderMonth() {
         </section>
         <section class="card chart-card">
           <h3>Needs by line</h3>
-          <div class="sub">Largest lines first. Groceries and Transit show their list totals.</div>
+          <div class="sub">Largest lines first. Rows linked to a list show that list’s total.</div>
           <div class="chart-box" id="needsBox"><canvas id="needsBar" aria-label="Needs by line chart" role="img"></canvas></div>
         </section>
       </aside>
@@ -206,17 +220,20 @@ function refresh() {
     set(`${s}Total`, fmt(c[`${s}Total`]));
     const p = c[`${s}Pct`];
     const el = $(`[data-k="${s}Pct"]`);
-    if (el) { el.textContent = p === null ? 'No budget (#DIV/0!)' : `${pct(p)} used`; el.classList.toggle('over', p !== null && p > 1); }
+    if (el) { el.textContent = p === null ? 'Add income to get goal' : `${pct(p)} of budget`; el.classList.toggle('over', s !== 'savings' && p !== null && p > 1); el.classList.toggle('met', s === 'savings' && p !== null && p >= 1); }
     const meter = $(`[data-meter="${s}"]`);
-    if (meter) { meter.classList.toggle('over', p !== null && p > 1); meter.firstElementChild.style.width = `${Math.max(0, Math.min(1, p ?? 0)) * 100}%`; }
+    if (meter) { meter.classList.toggle('over', s !== 'savings' && p !== null && p > 1); meter.classList.toggle('met', s === 'savings' && p !== null && p >= 1); meter.firstElementChild.style.width = `${Math.max(0, Math.min(1, p ?? 0)) * 100}%`; }
   }
-  set('groceriesTotal', fmt(c.groceriesTotal)); set('transitTotal', fmt(c.transitTotal));
-  for (const s of ['groceries', 'transit']) {
-    const el = $(`[data-feeds="${s}"]`);
-    const linked = m.needs.some((r) => r.kind === s);
-    if (el) el.textContent = linked ? `Total feeds the Needs row “${m.needs.find((r) => r.kind === s).label || s}” (=SUM(${s === 'groceries' ? 'Q:Q' : 'S:S'})).` : 'Not linked to Needs. Set a Needs row type to Σ to link it.';
+  for (const l of sumLists()) {
+    set(`${l.key}Total`, fmt(sumRows(listRows(m, l.key))));
+    const el = $(`[data-feeds="${l.key}"]`);
+    const row = m[l.group].find((r) => r.kind === l.key);
+    if (el) el.textContent = row ? `Total feeds the ${SEC[l.group].title} row “${row.label || l.title}”.` : `Not linked to ${SEC[l.group].title}. Type this list’s name in a ${SEC[l.group].title} amount to link it.`;
   }
-  document.querySelectorAll('[data-calc]').forEach((el) => { el.textContent = fmt(needsRowValue(m.needs[Number(el.dataset.calc)], m)); });
+  document.querySelectorAll('.amt.linked').forEach((el) => {
+    const sec = el.closest('[data-sec]')?.dataset.sec;
+    if (el !== document.activeElement && LINKABLE.includes(sec)) el.value = fmt(needsRowValue(m[sec][Number(el.dataset.i)], m));
+  });
   set('allocated', fmt(c.allocated));
   set('allocatedPct', c.allocatedPct === null ? '#DIV/0!' : pct(c.allocatedPct));
   set('remaining', fmt(c.remaining), c.remaining < -0.005);
@@ -323,8 +340,8 @@ function renderSummary() {
   const s = calcSummary(doc);
   const cols = [
     ['Total income', s.totalIncome], ['Total Wants', s.totalWants], ['Total Needs', s.totalNeeds],
-    ['Retirement/HSA', s.retirementHsa], ['Bank/Fidelity Savings', s.bankSavings],
-    ['Roth', s.roth], ['HSA', s.hsa], ['401k', s.k401],
+    ['Total Savings', s.totalSavings], ['Bank/Fidelity Savings', s.bankSavings],
+    ['Roth', s.roth, doc.settings.limitRoth], ['HSA', s.hsa, doc.settings.limitHsa], ['401k', s.k401, doc.settings.limit401k],
   ];
   const rows = s.months.map((c, i) => `<tr data-goto="${i}" style="cursor:pointer">
       <td>${MONTHS[i]}</td><td>${c.hasIncome ? fmt(c.income) : '—'}</td>
@@ -335,12 +352,16 @@ function renderSummary() {
   $('#view').innerHTML = `
     <section class="card"><div class="table-wrap"><table class="sum-table">
       <thead><tr>${cols.map(([h]) => `<th>${h}</th>`).join('')}</tr></thead>
-      <tbody><tr>${cols.map(([, v, ref]) => `<td>${usd(v)}${ref ? `<span class="cell-ref">${ref}</span>` : ''}</td>`).join('')}</tr></tbody>
+      <tbody><tr>${cols.map(([, v, limit]) => {
+        if (!(limit > 0)) return `<td>${usd(v)}</td>`;
+        if (v > limit + 0.005) return `<td class="over" title="Over the ${esc(usd(limit))} limit">${usd(v)}</td>`;
+        if (v >= limit - 0.005) return `<td class="met" title="Annual limit met">${usd(v)}</td>`;
+        return `<td title="Limit ${esc(usd(limit))}">${usd(v)}</td>`;
+      }).join('')}</tr></tbody>
     </table></div></section>
     <div class="summary-grid">
       <section class="card chart-card">
         <h3>Year breakdown</h3>
-        <div class="sub">Same series as the spreadsheet pie chart (Summary B2:E2).${doc.settings.retirementIncludesBank ? ' Retirement/HSA includes bank savings, as in the spreadsheet.' : ''}</div>
         <div class="chart-box tall"><canvas id="pie" role="img" aria-label="Year breakdown chart"></canvas></div>
         <div class="legend" id="pieLegend"></div>
       </section>
@@ -400,9 +421,9 @@ function rowCtx(el) {
   const card = el.closest('[data-sec]');
   if (!card || tab === 'summary') return null;
   const sec = card.dataset.sec;
-  return { sec, rows: doc.months[tab][sec], i: Number(el.dataset.i), card };
+  return { sec, rows: rowsOf(doc.months[tab], sec), i: Number(el.dataset.i), card };
 }
-function newRow(sec) { return sec === 'needs' ? { amount: null, label: '', kind: 'manual' } : { amount: null, label: '' }; }
+function newRow(sec) { return LINKABLE.includes(sec) ? { amount: null, label: '', kind: 'manual' } : { amount: null, label: '' }; }
 function focusRow(sec, i, cls = 'amt') {
   const card = $(`[data-sec="${sec}"]`);
   const el = card?.querySelector(`.row[data-i="${i}"] .${cls}`) || card?.querySelector(`.row[data-i="${i}"] .lbl`);
@@ -419,33 +440,78 @@ view.addEventListener('input', (e) => {
   const ctx = rowCtx(t); if (!ctx) return;
   const row = ctx.rows[ctx.i];
   if (t.classList.contains('amt')) {
+    if (LINKABLE.includes(ctx.sec)) {
+      showPop(t);
+      const hit = findList(t.value, ctx.sec);
+      if (hit) { row.kind = hit.key; row.amount = null; t.classList.add('linked'); t.style.color = ''; refresh(); scheduleSave(); return; }
+    }
     const p = parseAmount(t.value);
     t.style.color = p.ok ? '' : 'var(--over)';
     if (!p.ok) return;
     row.amount = p.v; t.classList.toggle('neg', n(p.v) < 0);
+    if (LINKABLE.includes(ctx.sec)) { row.kind = 'manual'; t.classList.remove('linked'); }
   } else if (t.classList.contains('lbl')) {
     row.label = t.value;
   } else return;
   refresh(); scheduleSave();
 });
 
-view.addEventListener('change', (e) => {
-  const t = e.target;
-  if (t.classList.contains('kind')) {
-    const ctx = rowCtx(t); ctx.rows[ctx.i].kind = t.value;
-    if (t.value !== 'manual') ctx.rows[ctx.i].amount = null;
-    scheduleSave(); renderMonth();
-  }
+/* Picker that links a Needs amount to a list total (or just type a number). */
+const pop = document.createElement('div');
+pop.id = 'sumPop'; pop.hidden = true; document.body.append(pop);
+let popFor = null; let popHi = -1;
+function popItems(t) {
+  const sec = rowCtx(t).sec; const q = t.value.trim().replace(/^Σ\s*/, '').toLowerCase();
+  return !q || /^[-+=$.\d]/.test(q) || findList(q, sec) ? sumLists(sec) : sumLists(sec).filter((l) => l.title.toLowerCase().includes(q));
+}
+function showPop(t) {
+  const items = popItems(t);
+  popFor = t; popHi = -1;
+  if (!items.length) { pop.hidden = true; return; }
+  const m = doc.months[tab]; const cur = rowCtx(t).rows[rowCtx(t).i].kind;
+  pop.innerHTML = '<div class="pop-h">Total of a list</div>' + items.map((l) => `<button type="button" data-key="${l.key}" class="${l.key === cur ? 'cur' : ''}"><span>Σ ${esc(l.title)}</span><span>${fmt(sumRows(listRows(m, l.key)))}</span></button>`).join('');
+  const r = t.getBoundingClientRect();
+  pop.style.left = `${r.left}px`; pop.style.top = `${r.bottom + 2}px`; pop.style.minWidth = `${Math.max(r.width, 200)}px`;
+  pop.hidden = false;
+}
+function hidePop() { pop.hidden = true; popFor = null; popHi = -1; }
+function pickList(key) {
+  const t = popFor; if (!t) return;
+  const ctx = rowCtx(t); const row = ctx.rows[ctx.i];
+  row.kind = key; row.amount = null;
+  t.classList.add('linked'); t.style.color = ''; t.value = listInfo(key).title; t.select();
+  hidePop(); scheduleSave(); refresh();
+}
+pop.addEventListener('mousedown', (e) => { // keep focus in the input
+  e.preventDefault();
+  const b = e.target.closest('button[data-key]'); if (b) pickList(b.dataset.key);
 });
+window.addEventListener('scroll', hidePop, true);
 
 view.addEventListener('click', async (e) => {
   const t = e.target.closest('button, tr[data-goto]');
   if (!t) return;
   if (t.dataset.act === 'import') return openImport();
   if (t.dataset.act === 'new') return openNew();
+  if (t.dataset.act === 'sec-add' || t.dataset.act === 'sec-rename') {
+    const sec = t.dataset.act === 'sec-rename' ? doc.months[tab].sections.find((s) => s.key === t.dataset.key) : null;
+    listEditing = sec;
+    $('#listDlgTitle').textContent = sec ? `Edit list (${MONTHS[tab]})` : `New summation list (${MONTHS[tab]})`;
+    const f = $('#listForm'); f.elements.title.value = sec?.title ?? ''; f.elements.group.value = sec?.group ?? 'needs';
+    $('#listDlg').showModal(); f.elements.title.focus(); return;
+  }
+  if (t.dataset.act === 'sec-del') {
+    const sec = doc.months[tab].sections.find((s) => s.key === t.dataset.key);
+    const m = doc.months[tab];
+    if (!await askDialog({ title: `Delete “${sec.title}”?`, text: `The list and its rows will be removed from this month's spending. Rows linked to it become empty amounts.`, ok: 'Delete', danger: true })) return;
+    m.sections = m.sections.filter((s) => s !== sec);
+    delete m.custom?.[sec.key];
+    for (const g of LINKABLE) for (const r of m[g]) if (r.kind === sec.key) { r.kind = 'manual'; r.amount = null; }
+    scheduleSave(); return renderMonth();
+  }
   if (t.dataset.goto !== undefined) { tab = Number(t.dataset.goto); store.set('ledgy.tab', String(tab)); return render(); }
   if (t.dataset.add) {
-    const sec = t.dataset.add; const rows = doc.months[tab][sec];
+    const sec = t.dataset.add; const rows = rowsOf(doc.months[tab], sec);
     rows.push(newRow(sec)); scheduleSave(); renderMonth(); focusRow(sec, rows.length - 1); return;
   }
   if (t.classList.contains('del')) {
@@ -456,6 +522,15 @@ view.addEventListener('click', async (e) => {
 
 view.addEventListener('keydown', (e) => {
   const t = e.target;
+  if (!pop.hidden && popFor === t) {
+    const btns = [...pop.querySelectorAll('button')];
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault(); popHi = (popHi + (e.key === 'ArrowDown' ? 1 : -1) + btns.length) % btns.length;
+      btns.forEach((b, k) => b.classList.toggle('hi', k === popHi)); return;
+    }
+    if (e.key === 'Enter' && popHi >= 0) { e.preventDefault(); pickList(btns[popHi].dataset.key); return; }
+    if (e.key === 'Escape') { hidePop(); return; }
+  }
   if (e.key !== 'Enter' || !(t.classList.contains('amt') || t.classList.contains('lbl'))) return;
   e.preventDefault();
   const ctx = rowCtx(t);
@@ -468,14 +543,20 @@ view.addEventListener('keydown', (e) => {
 
 // Show raw numbers while editing and formatted numbers (1,234.50) otherwise.
 const modelValue = (t) => { const ctx = rowCtx(t); return ctx ? ctx.rows[ctx.i].amount : doc.months[tab].income; };
+const linkedList = (t) => { const ctx = rowCtx(t); const k = LINKABLE.includes(ctx?.sec) ? ctx.rows[ctx.i].kind : 'manual'; return k && k !== 'manual' ? listInfo(k) : null; };
 view.addEventListener('focusin', (e) => {
   const t = e.target;
-  if (t.classList.contains('amt') || t.id === 'income') { t.value = amtText(modelValue(t)); t.select(); }
+  if (t.classList.contains('amt') || t.id === 'income') {
+    t.value = linkedList(t)?.title ?? amtText(modelValue(t)); t.select();
+    if (LINKABLE.includes(rowCtx(t)?.sec)) showPop(t);
+  }
 });
 view.addEventListener('focusout', (e) => {
   const t = e.target;
   if (!(t.classList.contains('amt') || t.id === 'income') || !t.isConnected || tab === 'summary') return;
-  t.style.color = ''; t.value = amtShow(modelValue(t));
+  t.style.color = ''; hidePop();
+  const link = linkedList(t);
+  t.value = link ? fmt(needsRowValue(rowCtx(t).rows[rowCtx(t).i], doc.months[tab])) : amtShow(modelValue(t));
 });
 
 // Paste a column (or two columns: amount, note) from a spreadsheet into an amount cell.
@@ -509,6 +590,37 @@ $('#yearSelect').addEventListener('change', (e) => loadYear(Number(e.target.valu
 $('#exportBtn').addEventListener('click', async (e) => { e.preventDefault(); await flush(); location.href = $('#exportBtn').href; });
 
 /* ---------- Dialogs ---------- */
+// Material 3 basic dialog in place of confirm()/alert(). Resolves true on the confirming action, false on cancel, Esc or scrim click.
+function askDialog({ title, text, ok = 'OK', cancel = 'Cancel', danger = false }) {
+  return new Promise((resolve) => {
+    const d = $('#msgDlg');
+    $('#msgTitle').textContent = title; $('#msgText').textContent = text;
+    const okBtn = $('#msgOk'); okBtn.textContent = ok; okBtn.className = `btn ${danger ? 'danger' : 'primary'}`;
+    $('#msgCancel').hidden = cancel === null; $('#msgCancel').textContent = cancel ?? '';
+    d.returnValue = '';
+    d.addEventListener('close', () => resolve(d.returnValue === 'ok'), { once: true });
+    d.showModal();
+  });
+}
+$('#msgDlg').addEventListener('click', (e) => { if (e.target === e.currentTarget) e.currentTarget.close(''); });
+
+let listEditing = null; // the list being edited in #listDlg, or null for a new one
+$('#listForm').addEventListener('submit', (e) => {
+  if (e.submitter?.value === 'cancel') return;
+  const f = e.target; const m = doc.months[tab];
+  const title = f.elements.title.value.trim().slice(0, 60); const group = f.elements.group.value;
+  if (!title) return;
+  if (sumLists().some((l) => l.key !== listEditing?.key && l.title.toLowerCase() === title.toLowerCase())) {
+    e.preventDefault(); askDialog({ title: 'Name already used', text: `${MONTHS[tab]} already has a list named “${title}”. Choose a different name.`, cancel: null }); return;
+  }
+  if (listEditing) {
+    if (listEditing.group !== group) { // rows in the old column can no longer link to it
+      for (const g of LINKABLE) for (const r of m[g]) if (r.kind === listEditing.key) { r.kind = 'manual'; r.amount = null; }
+    }
+    Object.assign(listEditing, { title, group });
+  } else (m.sections ||= []).push({ key: `x${Date.now().toString(36)}`, title, group });
+  scheduleSave(); renderMonth();
+});
 function openImport() {
   $('#importMsg').innerHTML = '';
   $('#importYear').value = doc?.year ?? new Date().getFullYear();
@@ -528,7 +640,7 @@ $('#importForm').addEventListener('submit', async (e) => {
     await flush();
     let res = await send(false);
     if (res.status === 409) {
-      if (!confirm(`${y} already has data. Replace it with the file?`)) { msg.textContent = 'Import cancelled.'; $('#importGo').disabled = false; return; }
+      if (!await askDialog({ title: `Replace ${y}?`, text: `${y} already has data. Importing this file replaces it.`, ok: 'Replace', danger: true })) { msg.textContent = 'Import cancelled.'; $('#importGo').disabled = false; return; }
       res = await send(true);
     }
     const body = await res.json();
@@ -555,7 +667,7 @@ $('#newForm').addEventListener('submit', async (e) => {
     await flush();
     await api(`/api/years/${y}`, { method: 'POST', body: JSON.stringify({ from: from ? Number(from) : null }) });
     await loadYears(y);
-  } catch (err) { alert(err.status === 409 ? `${y} already exists.` : err.message); }
+  } catch (err) { askDialog({ title: err.status === 409 ? `${y} already exists` : 'Could not create the year', text: err.status === 409 ? 'Pick a different year, or select it from the year menu.' : err.message, cancel: null }); }
 });
 
 $('#settingsBtn').addEventListener('click', () => {
@@ -565,7 +677,7 @@ $('#settingsBtn').addEventListener('click', () => {
   f.needsRate.value = +(s.needsRate * 100).toFixed(6);
   f.savingsRate.value = +(s.savingsRate * 100).toFixed(6);
   f.needsExtra.value = s.needsExtra; f.rothStart.value = s.rothStart;
-  f.hsa401kIncludeDec.checked = s.hsa401kIncludeDec; f.excludeBank.checked = !s.retirementIncludesBank;
+  f.limit401k.value = s.limit401k || 0; f.limitHsa.value = s.limitHsa || 0; f.limitRoth.value = s.limitRoth || 0;
   $('#backupLink').href = `/api/years/${doc.year}/backup.json`;
   $('#settingsDlg').showModal();
 });
@@ -579,12 +691,13 @@ $('#settingsForm').addEventListener('submit', (e) => {
     needsRate: num(f.needsRate.value, s.needsRate * 100) / 100,
     savingsRate: num(f.savingsRate.value, s.savingsRate * 100) / 100,
     needsExtra: num(f.needsExtra.value, s.needsExtra), rothStart: num(f.rothStart.value, s.rothStart),
-    hsa401kIncludeDec: f.hsa401kIncludeDec.checked, retirementIncludesBank: !f.excludeBank.checked,
+    limit401k: Math.max(0, num(f.limit401k.value, s.limit401k || 0)), limitHsa: Math.max(0, num(f.limitHsa.value, s.limitHsa || 0)),
+    limitRoth: Math.max(0, num(f.limitRoth.value, s.limitRoth || 0)),
   };
   scheduleSave(); render();
 });
 $('#deleteYearBtn').addEventListener('click', async () => {
-  if (!confirm(`Delete all data for ${doc.year}? This cannot be undone. Export a copy first if you need one.`)) return;
+  if (!await askDialog({ title: `Delete ${doc.year}?`, text: 'All data for this year will be permanently deleted. This cannot be undone. Export a copy first if you need one.', ok: 'Delete', danger: true })) return;
   await flush();
   await api(`/api/years/${doc.year}`, { method: 'DELETE' });
   $('#settingsDlg').close(); doc = null; dirty = false;

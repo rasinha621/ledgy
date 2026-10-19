@@ -27,7 +27,7 @@ db.exec(`PRAGMA journal_mode = WAL;
 
 const getYear = (y) => {
   const row = db.prepare('SELECT data, updated_at FROM years WHERE year = ?').get(y);
-  return row ? { ...JSON.parse(row.data), updatedAt: row.updated_at } : null;
+  return row ? { ...normalizeYear(JSON.parse(row.data), y), updatedAt: row.updated_at } : null;
 };
 const saveYear = (y, doc) => {
   const clean = normalizeYear(doc, y);
