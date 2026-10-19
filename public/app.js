@@ -335,12 +335,17 @@ function renderSummary() {
   $('#view').innerHTML = `
     <section class="card"><div class="table-wrap"><table class="sum-table">
       <thead><tr>${cols.map(([h]) => `<th>${h}</th>`).join('')}</tr></thead>
-      <tbody><tr>${cols.map(([, v, limit]) => `<td${limit > 0 && v >= limit - 0.005 ? ' class="met" title="Annual limit met"' : limit > 0 ? ` title="Limit ${esc(usd(limit))}"` : ''}>${usd(v)}</td>`).join('')}</tr></tbody>
+      <tbody><tr>${cols.map(([, v, limit]) => {
+        if (!(limit > 0)) return `<td>${usd(v)}</td>`;
+        if (v > limit + 0.005) return `<td class="over" title="Over the ${esc(usd(limit))} limit">${usd(v)}</td>`;
+        if (v >= limit - 0.005) return `<td class="met" title="Annual limit met">${usd(v)}</td>`;
+        return `<td title="Limit ${esc(usd(limit))}">${usd(v)}</td>`;
+      }).join('')}</tr></tbody>
     </table></div></section>
     <div class="summary-grid">
       <section class="card chart-card">
         <h3>Year breakdown</h3>
-        <div class="sub">Same series as the spreadsheet pie chart (Summary B2:E2).${doc.settings.retirementIncludesBank ? ' Retirement/HSA includes bank savings, as in the spreadsheet.' : ''}</div>
+        <div class="sub">${doc.settings.retirementIncludesBank ? ' Retirement/HSA includes bank savings, as in the spreadsheet.' : ''}</div>
         <div class="chart-box tall"><canvas id="pie" role="img" aria-label="Year breakdown chart"></canvas></div>
         <div class="legend" id="pieLegend"></div>
       </section>
