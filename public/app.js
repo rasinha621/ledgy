@@ -208,7 +208,7 @@ function refresh() {
     const el = $(`[data-k="${s}Pct"]`);
     if (el) { el.textContent = p === null ? 'No budget (#DIV/0!)' : `${pct(p)} used`; el.classList.toggle('over', p !== null && p > 1); }
     const meter = $(`[data-meter="${s}"]`);
-    if (meter) { meter.classList.toggle('over', p !== null && p > 1); meter.firstElementChild.style.width = `${Math.max(0, Math.min(1, p ?? 0)) * 100}%`; }
+    if (meter) { meter.classList.toggle('over', s !== 'savings' && p !== null && p > 1); meter.classList.toggle('met', s === 'savings' && p !== null && p >= 1); meter.firstElementChild.style.width = `${Math.max(0, Math.min(1, p ?? 0)) * 100}%`; }
   }
   set('groceriesTotal', fmt(c.groceriesTotal)); set('transitTotal', fmt(c.transitTotal));
   for (const s of ['groceries', 'transit']) {

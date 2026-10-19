@@ -241,6 +241,7 @@ main { padding: 24px 24px 48px; max-width: 1500px; margin: 0 auto; }
 .meter { height: 4px; border-radius: 2px; background: var(--md-sys-color-surface-container-highest); margin-top: 10px; overflow: hidden; position: relative; }
 .meter > span { position: absolute; inset: 0 auto 0 0; border-radius: 2px; transition: width 250ms var(--md-sys-motion-standard); }
 .meter.over > span { background: var(--md-sys-color-error) !important; }
+.meter.met > span { background: var(--ok) !important; }
 .feeds { font-size: 12px; line-height: 16px; letter-spacing: .4px; color: var(--md-sys-color-on-surface-variant); margin-top: 6px; }
 
 .rows { list-style: none; margin: 0; padding: 4px 8px; max-height: 540px; overflow-y: auto; border-top: 1px solid var(--md-sys-color-outline-variant); }
