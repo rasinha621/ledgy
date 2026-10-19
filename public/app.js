@@ -340,7 +340,7 @@ function renderSummary() {
   const s = calcSummary(doc);
   const cols = [
     ['Total income', s.totalIncome], ['Total Wants', s.totalWants], ['Total Needs', s.totalNeeds],
-    ['Retirement/HSA', s.retirementHsa], ['Bank/Fidelity Savings', s.bankSavings],
+    ['Total Savings', s.totalSavings], ['Bank/Fidelity Savings', s.bankSavings],
     ['Roth', s.roth, doc.settings.limitRoth], ['HSA', s.hsa, doc.settings.limitHsa], ['401k', s.k401, doc.settings.limit401k],
   ];
   const rows = s.months.map((c, i) => `<tr data-goto="${i}" style="cursor:pointer">
