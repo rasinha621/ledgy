@@ -123,7 +123,7 @@ a { color: var(--md-sys-color-primary); }
 :focus-visible { outline: 3px solid var(--md-sys-color-secondary); outline-offset: 2px; }
 
 /* State layer: hover 8%, focus/pressed 10% of the content color */
-.btn, .tab, .icon-btn, .add, .brand select, .kind {
+.btn, .tab, .icon-btn, .add, .brand select {
   transition: background-color 150ms var(--md-sys-motion-standard), box-shadow 150ms var(--md-sys-motion-standard);
 }
 
@@ -247,7 +247,6 @@ main { padding: 24px 24px 48px; max-width: 1500px; margin: 0 auto; }
 
 .rows { list-style: none; margin: 0; padding: 4px 8px; max-height: 540px; overflow-y: auto; border-top: 1px solid var(--md-sys-color-outline-variant); }
 .row { display: grid; grid-template-columns: 96px minmax(0, 1fr) 32px; gap: 4px; align-items: center; padding: 1px 0; }
-.row.with-kind { grid-template-columns: 96px minmax(0, 1fr) 32px 32px; }
 .row input {
   width: 100%; min-width: 0; height: 32px; border: 1px solid transparent; border-radius: var(--md-sys-shape-xs); padding: 0 8px; background: transparent;
 }
@@ -256,16 +255,13 @@ main { padding: 24px 24px 48px; max-width: 1500px; margin: 0 auto; }
 .row input.amt { text-align: right; font-variant-numeric: tabular-nums; }
 .row input.amt.neg { color: var(--ok); }
 .row input.lbl { color: var(--md-sys-color-on-surface-variant); }
+.row input.amt.linked { background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container); }
 .row .calc { text-align: right; padding: 6px 8px; font-variant-numeric: tabular-nums; border-radius: var(--md-sys-shape-xs); background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container); }
 .row .pos { font-size: 11px; color: var(--md-sys-color-outline); }
 /* Standard icon button */
 .icon-btn { width: 32px; height: 32px; border: 0; background: none; border-radius: 50%; cursor: pointer; color: var(--md-sys-color-on-surface-variant); opacity: 0; font-size: 13px; }
 .row:hover .icon-btn, .row:focus-within .icon-btn { opacity: 1; }
 .icon-btn:hover { background: color-mix(in srgb, var(--md-sys-color-error) 8%, transparent); color: var(--md-sys-color-error); }
-.kind { width: 32px; height: 28px; padding: 0; border: 0; border-radius: var(--md-sys-shape-sm); background: transparent; font-size: 11px; font-weight: 500; color: var(--md-sys-color-on-surface-variant); cursor: pointer; appearance: none; text-align: center; }
-.kind:hover { background: color-mix(in srgb, var(--md-sys-color-on-surface) 8%, transparent); }
-.kind.on { background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container); font-weight: 700; }
-.kind option { background: var(--md-sys-color-surface-container-high); color: var(--md-sys-color-on-surface); }
 /* Text button for adding rows */
 .add {
   display: block; width: calc(100% - 16px); height: 40px; margin: 4px 8px 12px; padding: 0 12px; border: 0; background: none;
@@ -367,6 +363,15 @@ legend { font-size: 14px; font-weight: 500; letter-spacing: .1px; color: var(--m
 [hidden] { display: none !important; }
 .row .lbl::placeholder { opacity: 0; }
 .row:hover .lbl::placeholder, .row .lbl:focus::placeholder { opacity: 1; }
-.kind:not(.on) { opacity: 0; }
-.row:hover .kind, .row:focus-within .kind, .kind:focus { opacity: 1; }
-@media (hover: none) { .kind:not(.on) { opacity: .6; } }
+
+/* Summation lists */
+.card-t .sec-btn { opacity: .6; width: 24px; height: 24px; font-size: 12px; }
+.card-t .sec-btn:hover { opacity: 1; }
+.add-list { height: 56px; border: 1px dashed var(--md-sys-color-outline); border-radius: var(--md-sys-shape-md); background: none; color: var(--md-sys-color-primary); font-size: 14px; font-weight: 500; cursor: pointer; }
+.add-list:hover { background: color-mix(in srgb, var(--md-sys-color-primary) 8%, transparent); }
+#sumPop { position: fixed; z-index: 50; padding: 4px; border-radius: var(--md-sys-shape-sm); background: var(--md-sys-color-surface-container-high); box-shadow: var(--md-sys-elevation-2, 0 4px 12px rgba(0,0,0,.25)); }
+#sumPop[hidden] { display: none; }
+#sumPop .pop-h { padding: 6px 10px 4px; font-size: 11px; color: var(--md-sys-color-on-surface-variant); }
+#sumPop button { display: flex; justify-content: space-between; gap: 16px; width: 100%; padding: 8px 10px; border: 0; border-radius: var(--md-sys-shape-xs); background: none; color: var(--md-sys-color-on-surface); font: inherit; font-size: 14px; cursor: pointer; text-align: left; font-variant-numeric: tabular-nums; }
+#sumPop button:hover, #sumPop button.hi { background: color-mix(in srgb, var(--md-sys-color-on-surface) 10%, transparent); }
+#sumPop button.cur { color: var(--md-sys-color-primary); font-weight: 500; }

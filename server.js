@@ -93,6 +93,7 @@ app.post('/api/years/:year', (req, res) => {
   const src = req.body?.from ? getYear(Number(req.body.from)) : null;
   if (src) {
     doc.settings = { ...src.settings, rothStart: 0 };
+    doc.sections = src.sections || [];
     const last = src.months[11];
     doc.months = doc.months.map(() => ({
       ...emptyMonth(),
