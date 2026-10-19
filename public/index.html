@@ -34,6 +34,17 @@
   <div id="banner" class="banner" hidden></div>
   <main id="view"></main>
 
+  <dialog id="msgDlg" class="alert" aria-labelledby="msgTitle" aria-describedby="msgText">
+    <form method="dialog">
+      <h2 id="msgTitle"></h2>
+      <p id="msgText"></p>
+      <div class="dlg-actions">
+        <button value="cancel" id="msgCancel" class="btn ghost" formnovalidate>Cancel</button>
+        <button value="ok" id="msgOk" class="btn primary">OK</button>
+      </div>
+    </form>
+  </dialog>
+
   <dialog id="importDlg">
     <form method="dialog" id="importForm">
       <h2>Import spreadsheet</h2>

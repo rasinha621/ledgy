@@ -504,7 +504,7 @@ view.addEventListener('click', async (e) => {
   if (t.dataset.act === 'sec-del') {
     const sec = doc.months[tab].sections.find((s) => s.key === t.dataset.key);
     const m = doc.months[tab];
-    if (!confirm(`Delete the “${sec.title}” list from ${MONTHS[tab]}? Needs rows linked to it become empty typed amounts.`)) return;
+    if (!await askDialog({ title: `Delete “${sec.title}”?`, text: `The list and its rows will be removed from ${MONTHS[tab]}. Rows linked to it become empty amounts.`, ok: 'Delete', danger: true })) return;
     m.sections = m.sections.filter((s) => s !== sec);
     delete m.custom?.[sec.key];
     for (const g of LINKABLE) for (const r of m[g]) if (r.kind === sec.key) { r.kind = 'manual'; r.amount = null; }
@@ -591,6 +591,20 @@ $('#yearSelect').addEventListener('change', (e) => loadYear(Number(e.target.valu
 $('#exportBtn').addEventListener('click', async (e) => { e.preventDefault(); await flush(); location.href = $('#exportBtn').href; });
 
 /* ---------- Dialogs ---------- */
+// Material 3 basic dialog in place of confirm()/alert(). Resolves true on the confirming action, false on cancel, Esc or scrim click.
+function askDialog({ title, text, ok = 'OK', cancel = 'Cancel', danger = false }) {
+  return new Promise((resolve) => {
+    const d = $('#msgDlg');
+    $('#msgTitle').textContent = title; $('#msgText').textContent = text;
+    const okBtn = $('#msgOk'); okBtn.textContent = ok; okBtn.className = `btn ${danger ? 'danger' : 'primary'}`;
+    $('#msgCancel').hidden = cancel === null; $('#msgCancel').textContent = cancel ?? '';
+    d.returnValue = '';
+    d.addEventListener('close', () => resolve(d.returnValue === 'ok'), { once: true });
+    d.showModal();
+  });
+}
+$('#msgDlg').addEventListener('click', (e) => { if (e.target === e.currentTarget) e.currentTarget.close(''); });
+
 let listEditing = null; // the list being edited in #listDlg, or null for a new one
 $('#listForm').addEventListener('submit', (e) => {
   if (e.submitter?.value === 'cancel') return;
@@ -598,7 +612,7 @@ $('#listForm').addEventListener('submit', (e) => {
   const title = f.elements.title.value.trim().slice(0, 60); const group = f.elements.group.value;
   if (!title) return;
   if (sumLists().some((l) => l.key !== listEditing?.key && l.title.toLowerCase() === title.toLowerCase())) {
-    e.preventDefault(); return alert(`A list named “${title}” already exists in ${MONTHS[tab]}.`);
+    e.preventDefault(); askDialog({ title: 'Name already used', text: `${MONTHS[tab]} already has a list named “${title}”. Choose a different name.`, cancel: null }); return;
   }
   if (listEditing) {
     if (listEditing.group !== group) { // rows in the old column can no longer link to it
@@ -627,7 +641,7 @@ $('#importForm').addEventListener('submit', async (e) => {
     await flush();
     let res = await send(false);
     if (res.status === 409) {
-      if (!confirm(`${y} already has data. Replace it with the file?`)) { msg.textContent = 'Import cancelled.'; $('#importGo').disabled = false; return; }
+      if (!await askDialog({ title: `Replace ${y}?`, text: `${y} already has data. Importing this file replaces it.`, ok: 'Replace', danger: true })) { msg.textContent = 'Import cancelled.'; $('#importGo').disabled = false; return; }
       res = await send(true);
     }
     const body = await res.json();
@@ -654,7 +668,7 @@ $('#newForm').addEventListener('submit', async (e) => {
     await flush();
     await api(`/api/years/${y}`, { method: 'POST', body: JSON.stringify({ from: from ? Number(from) : null }) });
     await loadYears(y);
-  } catch (err) { alert(err.status === 409 ? `${y} already exists.` : err.message); }
+  } catch (err) { askDialog({ title: err.status === 409 ? `${y} already exists` : 'Could not create the year', text: err.status === 409 ? 'Pick a different year, or select it from the year menu.' : err.message, cancel: null }); }
 });
 
 $('#settingsBtn').addEventListener('click', () => {
@@ -686,7 +700,7 @@ $('#settingsForm').addEventListener('submit', (e) => {
   scheduleSave(); render();
 });
 $('#deleteYearBtn').addEventListener('click', async () => {
-  if (!confirm(`Delete all data for ${doc.year}? This cannot be undone. Export a copy first if you need one.`)) return;
+  if (!await askDialog({ title: `Delete ${doc.year}?`, text: 'All data for this year will be permanently deleted. This cannot be undone. Export a copy first if you need one.', ok: 'Delete', danger: true })) return;
   await flush();
   await api(`/api/years/${doc.year}`, { method: 'DELETE' });
   $('#settingsDlg').close(); doc = null; dirty = false;

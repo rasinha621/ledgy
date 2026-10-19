@@ -350,7 +350,14 @@ fieldset { border: 1px solid var(--md-sys-color-outline-variant); border-radius:
 legend { font-size: 14px; font-weight: 500; letter-spacing: .1px; color: var(--md-sys-color-on-surface-variant); padding: 0 4px; }
 .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .dlg-actions { display: flex; gap: 8px; justify-content: flex-end; align-items: center; margin-top: 8px; }
-.dlg-actions .btn:not(.primary) { border-color: transparent; padding: 0 12px; }
+/* M3 dialogs use text buttons for their actions */
+.dlg-actions .btn, .dlg-actions .btn.primary { --sl: var(--md-sys-color-primary); border-color: transparent; background: none; box-shadow: none; padding: 0 12px; color: var(--md-sys-color-primary); }
+.dlg-actions .btn.ghost { --sl: var(--md-sys-color-primary); }
+.dlg-actions .btn.danger { --sl: var(--md-sys-color-error); color: var(--md-sys-color-error); }
+.dlg-actions .btn:hover, .dlg-actions .btn:focus-visible, .dlg-actions .btn.primary:hover, .dlg-actions .btn.primary:focus-visible { background: color-mix(in srgb, var(--sl) 8%, transparent); box-shadow: none; }
+dialog.alert { width: min(312px, calc(100vw - 32px)); min-width: 280px; }
+dialog.alert form { gap: 16px; }
+dialog.alert .dlg-actions { margin-top: 8px; }
 .dlg-actions .spacer { flex: 1; }
 .dlg-msg { font-size: 12px; max-height: 180px; overflow: auto; }
 .dlg-msg ul { margin: 6px 0 0; padding-left: 18px; color: var(--md-sys-color-on-surface-variant); }
