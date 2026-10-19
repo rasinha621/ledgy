@@ -63,6 +63,24 @@
     </form>
   </dialog>
 
+  <dialog id="listDlg">
+    <form method="dialog" id="listForm">
+      <h2 id="listDlgTitle">New summation list</h2>
+      <label>Name <input name="title" required maxlength="60" autocomplete="off" placeholder="e.g. Dining, Gas"></label>
+      <fieldset>
+        <legend>Counts as</legend>
+        <label class="check"><input type="radio" name="group" value="needs" checked> Need</label>
+        <label class="check"><input type="radio" name="group" value="wants"> Want</label>
+        <label class="check"><input type="radio" name="group" value="savings"> Saving</label>
+      </fieldset>
+      <p class="muted">Rows in that column can total this list by typing its name or picking it in the amount box.</p>
+      <div class="dlg-actions">
+        <button value="cancel" class="btn ghost" formnovalidate>Cancel</button>
+        <button class="btn primary" value="default">Save</button>
+      </div>
+    </form>
+  </dialog>
+
   <dialog id="settingsDlg">
     <form method="dialog" id="settingsForm">
       <h2>Settings for <span id="setYearLbl"></span></h2>

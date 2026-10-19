@@ -22,13 +22,19 @@ const SEC = {
 };
 const BASE_SECS = ['wants', 'needs', 'savings', 'groceries', 'transit'];
 // Lists whose total can feed a Needs row: Groceries, Transit and the ones added to this month.
-const sumLists = (m = doc.months[tab]) => [{ key: 'groceries', title: 'Groceries' }, { key: 'transit', title: 'Transit' }, ...(m?.sections || [])];
+const LINKABLE = ['wants', 'needs', 'savings']; // sections whose rows can total a list
+const GROUP_LABEL = { needs: 'Need', wants: 'Want', savings: 'Saving' };
+// All lists of the current month. Groceries and Transit are Needs lists; the rest carry their own group.
+const sumLists = (group, m = doc.months[tab]) => [
+  { key: 'groceries', title: 'Groceries', group: 'needs' }, { key: 'transit', title: 'Transit', group: 'needs' },
+  ...(m?.sections || []).map((s) => ({ ...s, group: s.group || 'needs' })),
+].filter((l) => !group || l.group === group);
 const listInfo = (key) => sumLists().find((l) => l.key === key);
-const findList = (text) => {
+const findList = (text, group) => {
   const q = String(text).trim().replace(/^Σ\s*/, '').toLowerCase();
-  return q ? sumLists().find((l) => l.title.toLowerCase() === q) : undefined;
+  return q ? sumLists(group).find((l) => l.title.toLowerCase() === q) : undefined;
 };
-const secMeta = (sec) => SEC[sec] || { title: listInfo(sec)?.title ?? sec, color: '--needs', ph: 'Note' };
+const secMeta = (sec) => SEC[sec] || { title: listInfo(sec)?.title ?? sec, color: `--${listInfo(sec)?.group ?? 'needs'}`, ph: 'Note' };
 const rowsOf = (month, sec) => (BASE_SECS.includes(sec) ? month[sec] : ((month.custom ||= {})[sec] ||= []));
 const SUMMARY_SAVINGS = ['401k', 'HSA', 'Roth', 'Bank/Fidelity Savings'];
 
@@ -138,10 +144,10 @@ function renderTabs() {
 }
 
 function rowHtml(sec, r, i, month) {
-  const link = sec === 'needs' && r.kind !== 'manual' ? listInfo(r.kind) : null;
+  const link = LINKABLE.includes(sec) && r.kind && r.kind !== 'manual' ? listInfo(r.kind) : null;
   const val = link ? fmt(needsRowValue(r, month)) : esc(amtShow(r.amount));
-  const hint = sec === 'savings' && i < 4 ? ` title="Summary: ${SUMMARY_SAVINGS[i]}"`
-    : sec === 'needs' ? ` title="${link ? `Total of ${esc(link.title)}. Type a number to unlink.` : 'Type an amount, or pick a list to total'}"` : '';
+  const sum = sec === 'savings' && i < 4 ? `Summary: ${SUMMARY_SAVINGS[i]}. ` : '';
+  const hint = LINKABLE.includes(sec) ? ` title="${sum}${link ? `Total of ${esc(link.title)}. Type a number to unlink.` : 'Type an amount, or pick a list to total'}"` : '';
   return `<li class="row" data-i="${i}">
     <input class="amt ${n(r.amount) < 0 ? 'neg' : ''} ${link ? 'linked' : ''}" data-i="${i}" inputmode="decimal" autocomplete="off" value="${val}" aria-label="Amount"${hint}>
     <input class="lbl" data-i="${i}" value="${esc(r.label)}" placeholder="${link ? `Σ ${esc(link.title)}` : secMeta(sec).ph}" aria-label="${secMeta(sec).ph}">
@@ -162,7 +168,7 @@ function cardHtml(sec, month) {
   return `<section class="card" data-sec="${sec}">
     <div class="card-h">
       <div class="card-t"><span class="swatch" style="background:var(${meta.color})"></span>${esc(meta.title)}
-        ${custom ? `<button class="icon-btn sec-btn" data-act="sec-rename" data-key="${sec}" aria-label="Rename list" title="Rename list">✎</button><button class="icon-btn sec-btn" data-act="sec-del" data-key="${sec}" aria-label="Delete list" title="Delete list">✕</button>` : ''}
+        ${custom ? `<button class="icon-btn sec-btn" data-act="sec-rename" data-key="${sec}" aria-label="Edit list" title="Edit list">✎</button><button class="icon-btn sec-btn" data-act="sec-del" data-key="${sec}" aria-label="Delete list" title="Delete list">✕</button>` : ''}
         <span class="total" data-k="${sec}Total"></span></div>
       ${sub}
     </div>
@@ -183,7 +189,7 @@ function renderMonth() {
     </div>
     <div class="month-grid">
       <div class="cols">${[...BASE_SECS, ...(m.sections || []).map((s) => s.key)].map((s) => cardHtml(s, m)).join('')}
-        <button class="add-list" data-act="sec-add">+ Add summation list</button></div>
+        <button class="add-list" data-act="sec-add">+ Add new category</button></div>
       <aside class="side">
         <section class="card chart-card">
           <h3>Spending breakdown</h3>
@@ -221,11 +227,12 @@ function refresh() {
   for (const l of sumLists()) {
     set(`${l.key}Total`, fmt(sumRows(listRows(m, l.key))));
     const el = $(`[data-feeds="${l.key}"]`);
-    const row = m.needs.find((r) => r.kind === l.key);
-    if (el) el.textContent = row ? `Total feeds the Needs row “${row.label || l.title}”.` : 'Not linked to Needs. Type this list’s name in a Needs amount to link it.';
+    const row = m[l.group].find((r) => r.kind === l.key);
+    if (el) el.textContent = row ? `Total feeds the ${SEC[l.group].title} row “${row.label || l.title}”.` : `Not linked to ${SEC[l.group].title}. Type this list’s name in a ${SEC[l.group].title} amount to link it.`;
   }
-  document.querySelectorAll('[data-sec="needs"] .amt.linked').forEach((el) => {
-    if (el !== document.activeElement) el.value = fmt(needsRowValue(m.needs[Number(el.dataset.i)], m));
+  document.querySelectorAll('.amt.linked').forEach((el) => {
+    const sec = el.closest('[data-sec]')?.dataset.sec;
+    if (el !== document.activeElement && LINKABLE.includes(sec)) el.value = fmt(needsRowValue(m[sec][Number(el.dataset.i)], m));
   });
   set('allocated', fmt(c.allocated));
   set('allocatedPct', c.allocatedPct === null ? '#DIV/0!' : pct(c.allocatedPct));
@@ -417,7 +424,7 @@ function rowCtx(el) {
   const sec = card.dataset.sec;
   return { sec, rows: rowsOf(doc.months[tab], sec), i: Number(el.dataset.i), card };
 }
-function newRow(sec) { return sec === 'needs' ? { amount: null, label: '', kind: 'manual' } : { amount: null, label: '' }; }
+function newRow(sec) { return LINKABLE.includes(sec) ? { amount: null, label: '', kind: 'manual' } : { amount: null, label: '' }; }
 function focusRow(sec, i, cls = 'amt') {
   const card = $(`[data-sec="${sec}"]`);
   const el = card?.querySelector(`.row[data-i="${i}"] .${cls}`) || card?.querySelector(`.row[data-i="${i}"] .lbl`);
@@ -434,16 +441,16 @@ view.addEventListener('input', (e) => {
   const ctx = rowCtx(t); if (!ctx) return;
   const row = ctx.rows[ctx.i];
   if (t.classList.contains('amt')) {
-    if (ctx.sec === 'needs') {
+    if (LINKABLE.includes(ctx.sec)) {
       showPop(t);
-      const hit = findList(t.value);
+      const hit = findList(t.value, ctx.sec);
       if (hit) { row.kind = hit.key; row.amount = null; t.classList.add('linked'); t.style.color = ''; refresh(); scheduleSave(); return; }
     }
     const p = parseAmount(t.value);
     t.style.color = p.ok ? '' : 'var(--over)';
     if (!p.ok) return;
     row.amount = p.v; t.classList.toggle('neg', n(p.v) < 0);
-    if (ctx.sec === 'needs') { row.kind = 'manual'; t.classList.remove('linked'); }
+    if (LINKABLE.includes(ctx.sec)) { row.kind = 'manual'; t.classList.remove('linked'); }
   } else if (t.classList.contains('lbl')) {
     row.label = t.value;
   } else return;
@@ -455,8 +462,8 @@ const pop = document.createElement('div');
 pop.id = 'sumPop'; pop.hidden = true; document.body.append(pop);
 let popFor = null; let popHi = -1;
 function popItems(t) {
-  const q = t.value.trim().replace(/^Σ\s*/, '').toLowerCase();
-  return !q || /^[-+=$.\d]/.test(q) || findList(q) ? sumLists() : sumLists().filter((l) => l.title.toLowerCase().includes(q));
+  const sec = rowCtx(t).sec; const q = t.value.trim().replace(/^Σ\s*/, '').toLowerCase();
+  return !q || /^[-+=$.\d]/.test(q) || findList(q, sec) ? sumLists(sec) : sumLists(sec).filter((l) => l.title.toLowerCase().includes(q));
 }
 function showPop(t) {
   const items = popItems(t);
@@ -487,18 +494,12 @@ view.addEventListener('click', async (e) => {
   if (!t) return;
   if (t.dataset.act === 'import') return openImport();
   if (t.dataset.act === 'new') return openNew();
-  if (t.dataset.act === 'sec-add') {
-    const title = (prompt('Name for the new summation list (e.g. Dining, Gas):') || '').trim().slice(0, 60);
-    if (!title) return;
-    if (sumLists().some((l) => l.title.toLowerCase() === title.toLowerCase())) return alert(`A list named “${title}” already exists.`);
-    (doc.months[tab].sections ||= []).push({ key: `x${Date.now().toString(36)}`, title }); scheduleSave(); return renderMonth();
-  }
-  if (t.dataset.act === 'sec-rename') {
-    const sec = doc.months[tab].sections.find((s) => s.key === t.dataset.key);
-    const title = (prompt('Rename list:', sec.title) || '').trim().slice(0, 60);
-    if (!title || title === sec.title) return;
-    if (sumLists().some((l) => l.key !== sec.key && l.title.toLowerCase() === title.toLowerCase())) return alert(`A list named “${title}” already exists.`);
-    sec.title = title; scheduleSave(); return renderMonth();
+  if (t.dataset.act === 'sec-add' || t.dataset.act === 'sec-rename') {
+    const sec = t.dataset.act === 'sec-rename' ? doc.months[tab].sections.find((s) => s.key === t.dataset.key) : null;
+    listEditing = sec;
+    $('#listDlgTitle').textContent = sec ? `Edit list (${MONTHS[tab]})` : `New summation list (${MONTHS[tab]})`;
+    const f = $('#listForm'); f.elements.title.value = sec?.title ?? ''; f.elements.group.value = sec?.group ?? 'needs';
+    $('#listDlg').showModal(); f.elements.title.focus(); return;
   }
   if (t.dataset.act === 'sec-del') {
     const sec = doc.months[tab].sections.find((s) => s.key === t.dataset.key);
@@ -506,7 +507,7 @@ view.addEventListener('click', async (e) => {
     if (!confirm(`Delete the “${sec.title}” list from ${MONTHS[tab]}? Needs rows linked to it become empty typed amounts.`)) return;
     m.sections = m.sections.filter((s) => s !== sec);
     delete m.custom?.[sec.key];
-    for (const r of m.needs) if (r.kind === sec.key) { r.kind = 'manual'; r.amount = null; }
+    for (const g of LINKABLE) for (const r of m[g]) if (r.kind === sec.key) { r.kind = 'manual'; r.amount = null; }
     scheduleSave(); return renderMonth();
   }
   if (t.dataset.goto !== undefined) { tab = Number(t.dataset.goto); store.set('ledgy.tab', String(tab)); return render(); }
@@ -543,12 +544,12 @@ view.addEventListener('keydown', (e) => {
 
 // Show raw numbers while editing and formatted numbers (1,234.50) otherwise.
 const modelValue = (t) => { const ctx = rowCtx(t); return ctx ? ctx.rows[ctx.i].amount : doc.months[tab].income; };
-const linkedList = (t) => { const ctx = rowCtx(t); const k = ctx?.sec === 'needs' ? ctx.rows[ctx.i].kind : 'manual'; return k !== 'manual' ? listInfo(k) : null; };
+const linkedList = (t) => { const ctx = rowCtx(t); const k = LINKABLE.includes(ctx?.sec) ? ctx.rows[ctx.i].kind : 'manual'; return k && k !== 'manual' ? listInfo(k) : null; };
 view.addEventListener('focusin', (e) => {
   const t = e.target;
   if (t.classList.contains('amt') || t.id === 'income') {
     t.value = linkedList(t)?.title ?? amtText(modelValue(t)); t.select();
-    if (rowCtx(t)?.sec === 'needs') showPop(t);
+    if (LINKABLE.includes(rowCtx(t)?.sec)) showPop(t);
   }
 });
 view.addEventListener('focusout', (e) => {
@@ -590,6 +591,23 @@ $('#yearSelect').addEventListener('change', (e) => loadYear(Number(e.target.valu
 $('#exportBtn').addEventListener('click', async (e) => { e.preventDefault(); await flush(); location.href = $('#exportBtn').href; });
 
 /* ---------- Dialogs ---------- */
+let listEditing = null; // the list being edited in #listDlg, or null for a new one
+$('#listForm').addEventListener('submit', (e) => {
+  if (e.submitter?.value === 'cancel') return;
+  const f = e.target; const m = doc.months[tab];
+  const title = f.elements.title.value.trim().slice(0, 60); const group = f.elements.group.value;
+  if (!title) return;
+  if (sumLists().some((l) => l.key !== listEditing?.key && l.title.toLowerCase() === title.toLowerCase())) {
+    e.preventDefault(); return alert(`A list named “${title}” already exists in ${MONTHS[tab]}.`);
+  }
+  if (listEditing) {
+    if (listEditing.group !== group) { // rows in the old column can no longer link to it
+      for (const g of LINKABLE) for (const r of m[g]) if (r.kind === listEditing.key) { r.kind = 'manual'; r.amount = null; }
+    }
+    Object.assign(listEditing, { title, group });
+  } else (m.sections ||= []).push({ key: `x${Date.now().toString(36)}`, title, group });
+  scheduleSave(); renderMonth();
+});
 function openImport() {
   $('#importMsg').innerHTML = '';
   $('#importYear').value = doc?.year ?? new Date().getFullYear();
