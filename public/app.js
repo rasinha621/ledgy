@@ -362,7 +362,6 @@ function renderSummary() {
     <div class="summary-grid">
       <section class="card chart-card">
         <h3>Year breakdown</h3>
-        <div class="sub">${doc.settings.retirementIncludesBank ? ' Retirement/HSA includes bank savings, as in the spreadsheet.' : ''}</div>
         <div class="chart-box tall"><canvas id="pie" role="img" aria-label="Year breakdown chart"></canvas></div>
         <div class="legend" id="pieLegend"></div>
       </section>
@@ -504,7 +503,7 @@ view.addEventListener('click', async (e) => {
   if (t.dataset.act === 'sec-del') {
     const sec = doc.months[tab].sections.find((s) => s.key === t.dataset.key);
     const m = doc.months[tab];
-    if (!await askDialog({ title: `Delete “${sec.title}”?`, text: `The list and its rows will be removed from ${MONTHS[tab]}. Rows linked to it become empty amounts.`, ok: 'Delete', danger: true })) return;
+    if (!await askDialog({ title: `Delete “${sec.title}”?`, text: `The list and its rows will be removed from this month's spending. Rows linked to it become empty amounts.`, ok: 'Delete', danger: true })) return;
     m.sections = m.sections.filter((s) => s !== sec);
     delete m.custom?.[sec.key];
     for (const g of LINKABLE) for (const r of m[g]) if (r.kind === sec.key) { r.kind = 'manual'; r.amount = null; }
@@ -679,7 +678,6 @@ $('#settingsBtn').addEventListener('click', () => {
   f.savingsRate.value = +(s.savingsRate * 100).toFixed(6);
   f.needsExtra.value = s.needsExtra; f.rothStart.value = s.rothStart;
   f.limit401k.value = s.limit401k || 0; f.limitHsa.value = s.limitHsa || 0; f.limitRoth.value = s.limitRoth || 0;
-  f.hsa401kIncludeDec.checked = s.hsa401kIncludeDec; f.excludeBank.checked = !s.retirementIncludesBank;
   $('#backupLink').href = `/api/years/${doc.year}/backup.json`;
   $('#settingsDlg').showModal();
 });
@@ -695,7 +693,6 @@ $('#settingsForm').addEventListener('submit', (e) => {
     needsExtra: num(f.needsExtra.value, s.needsExtra), rothStart: num(f.rothStart.value, s.rothStart),
     limit401k: Math.max(0, num(f.limit401k.value, s.limit401k || 0)), limitHsa: Math.max(0, num(f.limitHsa.value, s.limitHsa || 0)),
     limitRoth: Math.max(0, num(f.limitRoth.value, s.limitRoth || 0)),
-    hsa401kIncludeDec: f.hsa401kIncludeDec.checked, retirementIncludesBank: !f.excludeBank.checked,
   };
   scheduleSave(); render();
 });
