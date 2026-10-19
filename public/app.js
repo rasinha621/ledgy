@@ -21,8 +21,8 @@ const SEC = {
   transit: { title: 'Transit', color: '--needs', cols: 'S / T', ph: 'Note' },
 };
 const BASE_SECS = ['wants', 'needs', 'savings', 'groceries', 'transit'];
-// Lists whose total can feed a Needs row: Groceries, Transit and the ones added for this year.
-const sumLists = () => [{ key: 'groceries', title: 'Groceries' }, { key: 'transit', title: 'Transit' }, ...(doc.sections || [])];
+// Lists whose total can feed a Needs row: Groceries, Transit and the ones added to this month.
+const sumLists = (m = doc.months[tab]) => [{ key: 'groceries', title: 'Groceries' }, { key: 'transit', title: 'Transit' }, ...(m?.sections || [])];
 const listInfo = (key) => sumLists().find((l) => l.key === key);
 const findList = (text) => {
   const q = String(text).trim().replace(/^Σ\s*/, '').toLowerCase();
@@ -100,7 +100,6 @@ async function loadYears(select) {
 async function loadYear(y) {
   await flush();
   doc = await api(`/api/years/${y}`);
-  doc.sections ||= [];
   store.set('ledgy.year', String(y));
   const now = new Date();
   const saved = store.get('ledgy.tab');
@@ -183,7 +182,7 @@ function renderMonth() {
       <div class="kpi"><div class="k">Amount remaining </div><div class="v" data-k="remaining"></div></div>
     </div>
     <div class="month-grid">
-      <div class="cols">${[...BASE_SECS, ...doc.sections.map((s) => s.key)].map((s) => cardHtml(s, m)).join('')}
+      <div class="cols">${[...BASE_SECS, ...(m.sections || []).map((s) => s.key)].map((s) => cardHtml(s, m)).join('')}
         <button class="add-list" data-act="sec-add">+ Add summation list</button></div>
       <aside class="side">
         <section class="card chart-card">
@@ -492,23 +491,22 @@ view.addEventListener('click', async (e) => {
     const title = (prompt('Name for the new summation list (e.g. Dining, Gas):') || '').trim().slice(0, 60);
     if (!title) return;
     if (sumLists().some((l) => l.title.toLowerCase() === title.toLowerCase())) return alert(`A list named “${title}” already exists.`);
-    doc.sections.push({ key: `x${Date.now().toString(36)}`, title }); scheduleSave(); return renderMonth();
+    (doc.months[tab].sections ||= []).push({ key: `x${Date.now().toString(36)}`, title }); scheduleSave(); return renderMonth();
   }
   if (t.dataset.act === 'sec-rename') {
-    const sec = doc.sections.find((s) => s.key === t.dataset.key);
+    const sec = doc.months[tab].sections.find((s) => s.key === t.dataset.key);
     const title = (prompt('Rename list:', sec.title) || '').trim().slice(0, 60);
     if (!title || title === sec.title) return;
     if (sumLists().some((l) => l.key !== sec.key && l.title.toLowerCase() === title.toLowerCase())) return alert(`A list named “${title}” already exists.`);
     sec.title = title; scheduleSave(); return renderMonth();
   }
   if (t.dataset.act === 'sec-del') {
-    const sec = doc.sections.find((s) => s.key === t.dataset.key);
-    if (!confirm(`Delete the “${sec.title}” list from every month of ${doc.year}? Needs rows linked to it become typed amounts of 0.`)) return;
-    doc.sections = doc.sections.filter((s) => s !== sec);
-    for (const m of doc.months) {
-      delete m.custom?.[sec.key];
-      for (const r of m.needs) if (r.kind === sec.key) { r.kind = 'manual'; r.amount = null; }
-    }
+    const sec = doc.months[tab].sections.find((s) => s.key === t.dataset.key);
+    const m = doc.months[tab];
+    if (!confirm(`Delete the “${sec.title}” list from ${MONTHS[tab]}? Needs rows linked to it become empty typed amounts.`)) return;
+    m.sections = m.sections.filter((s) => s !== sec);
+    delete m.custom?.[sec.key];
+    for (const r of m.needs) if (r.kind === sec.key) { r.kind = 'manual'; r.amount = null; }
     scheduleSave(); return renderMonth();
   }
   if (t.dataset.goto !== undefined) { tab = Number(t.dataset.goto); store.set('ledgy.tab', String(tab)); return render(); }
