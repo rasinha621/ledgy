@@ -77,6 +77,14 @@
         </div>
       </fieldset>
       <fieldset>
+        <legend>Annual contribution limits (0 = not set)</legend>
+        <div class="grid3">
+          <label>401k limit $ <input type="number" step="any" min="0" name="limit401k" style="width:100px"></label>
+          <label>HSA limit $ <input type="number" step="any" min="0" name="limitHsa" style="width:100px"></label>
+          <label>Roth limit $ <input type="number" step="any" min="0" name="limitRoth" style="width:100px"></label>
+        </div>
+      </fieldset>
+      <fieldset>
         <legend>Summary behavior (spreadsheet defaults are off)</legend>
         <label class="check"><input type="checkbox" name="hsa401kIncludeDec"> Include DEC in the HSA and 401k totals</label>
         <label class="check"><input type="checkbox" name="excludeBank"> Do not count bank savings (row 4) in “Retirement/HSA”</label>

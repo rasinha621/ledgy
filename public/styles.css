@@ -297,6 +297,7 @@ tbody tr:hover td { background: color-mix(in srgb, var(--md-sys-color-on-surface
 tr:last-child td { border-bottom: 0; }
 td.over { color: var(--md-sys-color-error); }
 tfoot td { font-weight: 500; border-top: 1px solid var(--md-sys-color-outline); }
+.sum-table td.met { color: var(--ok); }
 .sum-table td { height: 64px; font-size: 16px; font-weight: 500; }
 .cell-ref { display: block; font-family: var(--mono); font-size: 11px; color: var(--md-sys-color-outline); font-weight: 400; }
 

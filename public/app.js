@@ -324,7 +324,7 @@ function renderSummary() {
   const cols = [
     ['Total income', s.totalIncome], ['Total Wants', s.totalWants], ['Total Needs', s.totalNeeds],
     ['Retirement/HSA', s.retirementHsa], ['Bank/Fidelity Savings', s.bankSavings],
-    ['Roth', s.roth], ['HSA', s.hsa], ['401k', s.k401],
+    ['Roth', s.roth, doc.settings.limitRoth], ['HSA', s.hsa, doc.settings.limitHsa], ['401k', s.k401, doc.settings.limit401k],
   ];
   const rows = s.months.map((c, i) => `<tr data-goto="${i}" style="cursor:pointer">
       <td>${MONTHS[i]}</td><td>${c.hasIncome ? fmt(c.income) : '—'}</td>
@@ -335,7 +335,7 @@ function renderSummary() {
   $('#view').innerHTML = `
     <section class="card"><div class="table-wrap"><table class="sum-table">
       <thead><tr>${cols.map(([h]) => `<th>${h}</th>`).join('')}</tr></thead>
-      <tbody><tr>${cols.map(([, v, ref]) => `<td>${usd(v)}${ref ? `<span class="cell-ref">${ref}</span>` : ''}</td>`).join('')}</tr></tbody>
+      <tbody><tr>${cols.map(([, v, limit]) => `<td${limit > 0 && v >= limit - 0.005 ? ' class="met" title="Annual limit met"' : limit > 0 ? ` title="Limit ${esc(usd(limit))}"` : ''}>${usd(v)}</td>`).join('')}</tr></tbody>
     </table></div></section>
     <div class="summary-grid">
       <section class="card chart-card">
@@ -565,6 +565,7 @@ $('#settingsBtn').addEventListener('click', () => {
   f.needsRate.value = +(s.needsRate * 100).toFixed(6);
   f.savingsRate.value = +(s.savingsRate * 100).toFixed(6);
   f.needsExtra.value = s.needsExtra; f.rothStart.value = s.rothStart;
+  f.limit401k.value = s.limit401k || 0; f.limitHsa.value = s.limitHsa || 0; f.limitRoth.value = s.limitRoth || 0;
   f.hsa401kIncludeDec.checked = s.hsa401kIncludeDec; f.excludeBank.checked = !s.retirementIncludesBank;
   $('#backupLink').href = `/api/years/${doc.year}/backup.json`;
   $('#settingsDlg').showModal();
@@ -579,6 +580,8 @@ $('#settingsForm').addEventListener('submit', (e) => {
     needsRate: num(f.needsRate.value, s.needsRate * 100) / 100,
     savingsRate: num(f.savingsRate.value, s.savingsRate * 100) / 100,
     needsExtra: num(f.needsExtra.value, s.needsExtra), rothStart: num(f.rothStart.value, s.rothStart),
+    limit401k: Math.max(0, num(f.limit401k.value, s.limit401k || 0)), limitHsa: Math.max(0, num(f.limitHsa.value, s.limitHsa || 0)),
+    limitRoth: Math.max(0, num(f.limitRoth.value, s.limitRoth || 0)),
     hsa401kIncludeDec: f.hsa401kIncludeDec.checked, retirementIncludesBank: !f.excludeBank.checked,
   };
   scheduleSave(); render();
