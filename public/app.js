@@ -411,7 +411,6 @@ function renderSummary() {
       </section>
       <section class="card chart-card">
         <h3>Spending by month</h3>
-        <div class="sub">Wants, Needs and Savings stacked. The line is income.</div>
         <div class="chart-box tall"><canvas id="monthly" role="img" aria-label="Spending by month chart"></canvas></div>
       </section>
     </div>
