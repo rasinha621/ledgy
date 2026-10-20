@@ -1,5 +1,7 @@
 import { MONTHS, calcMonth, calcSummary, needsRowValue, listRows, sumRows, n } from '/lib/calc.js';
 
+import { Hct, SchemeTonalSpot, MaterialDynamicColors as DC, argbFromHex, hexFromArgb, customColor } from '/vendor-mcu.js';
+
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 // Round like Excel: use 15 significant digits first, then round half away from zero.
@@ -16,13 +18,18 @@ const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyV
 /* ---------- Preferences (per browser) ---------- */
 const FULL_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const MONTH_STYLES = { upper: 'JAN', title: 'Jan', num: '01', full: 'January' };
-const COLOR_PREFS = [
-  ['--accent', 'Accent'], ['--wants', 'Wants'], ['--needs', 'Needs'], ['--savings', 'Savings'], ['--bank', 'Bank savings'],
-];
+// M3 color system: one seed color generates the tonal palettes and every color role for light and dark.
+const SEED_PRESETS = ['#6750a4', '#006a6a', '#386a20', '#8b5000', '#a43b5c', '#006874'];
+const ROLES = ['primary', 'onPrimary', 'primaryContainer', 'onPrimaryContainer', 'secondary', 'onSecondary', 'secondaryContainer', 'onSecondaryContainer',
+  'error', 'onError', 'errorContainer', 'onErrorContainer', 'surface', 'onSurface', 'onSurfaceVariant', 'surfaceContainerLowest', 'surfaceContainerLow',
+  'surfaceContainer', 'surfaceContainerHigh', 'surfaceContainerHighest', 'outline', 'outlineVariant', 'inverseSurface', 'inverseOnSurface', 'scrim', 'shadow'];
+const kebab = (r) => r.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
+// Data colors are M3 custom colors: blended toward the seed so they sit well with the theme.
+const DATA_COLORS = { '--needs': '#c4581f', '--savings': '#1b8a63', '--bank': '#b88300' };
 const loadPrefs = () => {
   let p = {};
   try { p = JSON.parse(store.get('ledgy.prefs') || '{}') || {}; } catch { /* ignore bad JSON */ }
-  return { theme: ['light', 'dark'].includes(p.theme) ? p.theme : 'auto', monthStyle: MONTH_STYLES[p.monthStyle] ? p.monthStyle : 'upper', colors: p.colors && typeof p.colors === 'object' ? p.colors : {} };
+  return { theme: ['light', 'dark'].includes(p.theme) ? p.theme : 'auto', monthStyle: MONTH_STYLES[p.monthStyle] ? p.monthStyle : 'upper', seed: /^#[0-9a-f]{6}$/i.test(p.seed || '') ? p.seed.toLowerCase() : null };
 };
 let prefs = loadPrefs();
 const monthLabel = (i) => {
@@ -30,23 +37,25 @@ const monthLabel = (i) => {
   return st === 'full' ? FULL_MONTHS[i] : st === 'num' ? String(i + 1).padStart(2, '0') : st === 'title' ? FULL_MONTHS[i].slice(0, 3) : MONTHS[i];
 };
 const monthLabels = () => MONTHS.map((_, i) => monthLabel(i));
-// Pick black or white text for a background color.
-const onColor = (hex) => {
-  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.4 ? '#000000' : '#ffffff';
-};
-function applyPrefs() {
-  const root = document.documentElement;
-  if (prefs.theme === 'auto') root.removeAttribute('data-theme'); else root.dataset.theme = prefs.theme;
-  // Clear earlier overrides first so the defaults below are read for the active theme.
-  for (const v of ['--wants', '--needs', '--savings', '--bank', '--md-sys-color-primary', '--md-sys-color-on-primary']) root.style.removeProperty(v);
-  for (const [v] of COLOR_PREFS) {
-    const c = prefs.colors[v];
-    if (!/^#[0-9a-f]{6}$/i.test(c || '')) continue;
-    if (v === '--accent') {
-      root.style.setProperty('--md-sys-color-primary', c); root.style.setProperty('--md-sys-color-on-primary', onColor(c));
-    } else root.style.setProperty(v, c);
+const seedVars = (seed, dark) => {
+  const src = argbFromHex(seed); const scheme = new SchemeTonalSpot(Hct.fromInt(src), dark, 0); const vars = {};
+  for (const r of ROLES) vars[`--md-sys-color-${kebab(r)}`] = hexFromArgb(DC[r].getArgb(scheme));
+  vars['--wants'] = vars['--md-sys-color-primary'];
+  for (const [v, base] of Object.entries(DATA_COLORS)) {
+    const c = customColor(src, { name: v, value: argbFromHex(base), blend: true });
+    vars[v] = hexFromArgb((dark ? c.dark : c.light).color);
   }
+  vars['--free'] = vars['--md-sys-color-outline-variant']; vars['--ok'] = vars['--savings'];
+  return vars;
+};
+let appliedVars = [];
+function applyPrefs(p = prefs) {
+  const root = document.documentElement;
+  if (p.theme === 'auto') root.removeAttribute('data-theme'); else root.dataset.theme = p.theme;
+  appliedVars.forEach((v) => root.style.removeProperty(v)); appliedVars = [];
+  if (!p.seed) return;
+  const dark = p.theme === 'dark' || (p.theme === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
+  for (const [k, v] of Object.entries(seedVars(p.seed, dark))) { root.style.setProperty(k, v); appliedVars.push(k); }
 }
 applyPrefs();
 
@@ -707,20 +716,46 @@ $('#newForm').addEventListener('submit', async (e) => {
   } catch (err) { askDialog({ title: err.status === 409 ? `${y} already exists` : 'Could not create the year', text: err.status === 409 ? 'Pick a different year, or select it from the year menu.' : err.message, cancel: null }); }
 });
 
-let draftColors = {};
-const toHex = (c) => {
-  if (/^#[0-9a-f]{6}$/i.test(c)) return c.toLowerCase();
-  const ctx = document.createElement('canvas').getContext('2d'); ctx.fillStyle = c; return ctx.fillStyle;
-};
-$('#settingsForm').addEventListener('input', (e) => {
-  if (e.target.dataset.cssvar) draftColors[e.target.dataset.cssvar] = e.target.value;
+/* M3-style seed picker: preset chips plus a custom color built from HCT hue and chroma sliders. */
+let draftSeed = null;
+const hueTrack = () => `linear-gradient(90deg, ${Array.from({ length: 13 }, (_, i) => hexFromArgb(Hct.from(i * 30, 60, 60).toInt())).join(', ')})`;
+function renderSeedPicker() {
+  const chip = (seed, label) => `<button type="button" class="seed${(draftSeed || null) === seed ? ' on' : ''}" data-seed="${seed || ''}" aria-label="${label}" aria-pressed="${(draftSeed || null) === seed}" style="--c:${seed || '#415f91'}">${seed ? '' : '<span>A</span>'}</button>`;
+  const custom = draftSeed && !SEED_PRESETS.includes(draftSeed);
+  $('#seedChips').innerHTML = chip(null, 'Default') + SEED_PRESETS.map((c) => chip(c, c)).join('')
+    + `<button type="button" class="seed custom${custom ? ' on' : ''}" data-seed="custom" aria-label="Custom color" aria-pressed="${!!custom}" style="--c:${custom ? draftSeed : 'transparent'}">+</button>`;
+  $('#seedCustom').hidden = !seedPanelOpen;
+}
+let seedPanelOpen = false;
+function syncSeedSliders() {
+  const h = Hct.fromInt(argbFromHex(draftSeed || '#415f91'));
+  const f = $('#settingsForm');
+  f.seedHue.value = Math.round(h.hue); f.seedChroma.value = Math.round(h.chroma); f.seedHex.value = hexFromArgb(h.toInt());
+  f.seedChroma.style.setProperty('--track', `linear-gradient(90deg, ${hexFromArgb(Hct.from(h.hue, 0, 50).toInt())}, ${hexFromArgb(Hct.from(h.hue, 100, 50).toInt())})`);
+}
+function previewDraft() { applyPrefs({ ...prefs, theme: $('#settingsForm').theme.value, seed: draftSeed }); }
+$('#seedChips').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-seed]'); if (!b) return;
+  if (b.dataset.seed === 'custom') { seedPanelOpen = !seedPanelOpen; if (!draftSeed) draftSeed = '#415f91'; syncSeedSliders(); } else { draftSeed = b.dataset.seed || null; seedPanelOpen = false; }
+  renderSeedPicker(); previewDraft();
 });
-$('#resetColors').addEventListener('click', () => {
-  const f = $('#settingsForm'); draftColors = {};
-  const saved = prefs.colors; prefs.colors = {}; applyPrefs();
-  for (const [v] of COLOR_PREFS) f[`color${v}`].value = toHex(cssVar(v));
-  prefs.colors = saved; applyPrefs();
+$('#seedCustom').addEventListener('input', (e) => {
+  const f = $('#settingsForm');
+  if (e.target === f.seedHex) {
+    if (!/^#[0-9a-f]{6}$/i.test(f.seedHex.value)) return;
+    draftSeed = f.seedHex.value.toLowerCase();
+  } else {
+    draftSeed = hexFromArgb(Hct.from(Number(f.seedHue.value), Number(f.seedChroma.value), 40).toInt());
+  }
+  if (e.target !== f.seedHex) f.seedHex.value = draftSeed;
+  f.seedChroma.style.setProperty('--track', `linear-gradient(90deg, ${hexFromArgb(Hct.from(Number(f.seedHue.value), 0, 50).toInt())}, ${hexFromArgb(Hct.from(Number(f.seedHue.value), 100, 50).toInt())})`);
+  $('#seedChips .custom').style.setProperty('--c', draftSeed); $('#seedChips .custom').classList.add('on');
+  $('#seedChips').querySelectorAll('.seed:not(.custom)').forEach((b) => b.classList.remove('on'));
+  previewDraft();
 });
+$('#settingsForm').theme.addEventListener('change', previewDraft);
+// Cancel, Escape or Save: drop the live preview and use the saved preferences.
+$('#settingsDlg').addEventListener('close', () => { applyPrefs(); });
 $('#settingsBtn').addEventListener('click', () => {
   const f = $('#settingsForm'); const s = doc.settings;
   $('#setYearLbl').textContent = doc.year;
@@ -731,8 +766,8 @@ $('#settingsBtn').addEventListener('click', () => {
   f.limit401k.value = s.limit401k || 0; f.limitHsa.value = s.limitHsa || 0; f.limitRoth.value = s.limitRoth || 0;
   $('#backupLink').href = `/api/years/${doc.year}/backup.json`;
   f.theme.value = prefs.theme; f.monthStyle.value = prefs.monthStyle;
-  draftColors = { ...prefs.colors };
-  for (const [v] of COLOR_PREFS) f[`color${v}`].value = toHex(draftColors[v] || cssVar(v));
+  draftSeed = prefs.seed; seedPanelOpen = false; $('#seedCustom').querySelector('input[type=range]').style.setProperty('--track', hueTrack());
+  renderSeedPicker();
   $('#settingsDlg').showModal();
 });
 $('#settingsForm').addEventListener('submit', (e) => {
@@ -748,7 +783,7 @@ $('#settingsForm').addEventListener('submit', (e) => {
     limit401k: Math.max(0, num(f.limit401k.value, s.limit401k || 0)), limitHsa: Math.max(0, num(f.limitHsa.value, s.limitHsa || 0)),
     limitRoth: Math.max(0, num(f.limitRoth.value, s.limitRoth || 0)),
   };
-  prefs = { theme: f.theme.value, monthStyle: f.monthStyle.value, colors: draftColors };
+  prefs = { theme: f.theme.value, monthStyle: f.monthStyle.value, seed: draftSeed };
   store.set('ledgy.prefs', JSON.stringify(prefs)); applyPrefs();
   scheduleSave(); render();
 });
@@ -760,7 +795,7 @@ $('#deleteYearBtn').addEventListener('click', async () => {
   await loadYears();
 });
 
-matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => doc && render());
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { applyPrefs(); if (doc) render(); });
 // Charts draw text on canvas, so redraw once the web font is ready.
 document.fonts?.ready.then(() => doc && render());
 

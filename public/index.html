@@ -114,10 +114,19 @@
       <fieldset>
         <legend>Preferences (this browser)</legend>
         <div class="grid3">
-          <label class="tf sel"><select name="theme"><option value="auto">Auto (follow system)</option><option value="light">Light</option><option value="dark">Dark</option></select><span>Theme</span></label>
+          <label class="tf sel"><select name="theme"><option value="auto">Auto</option><option value="light">Light</option><option value="dark">Dark</option></select><span>Theme</span></label>
           <label class="tf sel"><select name="monthStyle"><option value="upper">JAN</option><option value="title">Jan</option><option value="num">01</option><option value="full">January</option></select><span>Month style</span></label>
         </div>
-        <div class="colors"><label class="color"><input type="color" name="color--accent" data-cssvar="--accent"><span>Accent</span></label><label class="color"><input type="color" name="color--wants" data-cssvar="--wants"><span>Wants</span></label><label class="color"><input type="color" name="color--needs" data-cssvar="--needs"><span>Needs</span></label><label class="color"><input type="color" name="color--savings" data-cssvar="--savings"><span>Savings</span></label><label class="color"><input type="color" name="color--bank" data-cssvar="--bank"><span>Bank savings</span></label><button type="button" id="resetColors" class="btn ghost">Reset colors</button></div>
+        <div class="seed-group">
+          <div class="muted">Theme color</div>
+          <div id="seedChips" class="seeds"></div>
+          <div id="seedCustom" class="seed-custom" hidden>
+            <label class="slider"><span>Hue</span><input type="range" name="seedHue" min="0" max="360" step="1"></label>
+            <label class="slider"><span>Chroma</span><input type="range" name="seedChroma" min="0" max="120" step="1"></label>
+            <label class="tf"><input name="seedHex" maxlength="7" autocomplete="off" placeholder=" "><span>Hex</span></label>
+          </div>
+          <p class="muted hint">One color generates the whole palette for light and dark, following Material 3 color roles.</p>
+        </div>
       </fieldset>
       <p class="muted"><a id="backupLink" href="#" download>Download JSON backup</a></p>
       <div class="dlg-actions">
