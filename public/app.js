@@ -162,6 +162,7 @@ async function loadYear(y) {
 
 /* ---------- Render ---------- */
 function render() {
+  chartTip.classList.remove('on');
   Object.values(charts).forEach((c) => c.destroy());
   for (const k of Object.keys(charts)) delete charts[k];
   const has = !!doc;
@@ -294,12 +295,21 @@ function chartTheme() {
   Chart.defaults.color = cssVar('--text-2');
   Chart.defaults.borderColor = cssVar('--line');
 }
-const tooltip = (label) => ({
-  backgroundColor: cssVar('--tooltip-bg'), titleColor: cssVar('--tooltip-fg'), bodyColor: cssVar('--tooltip-fg'),
-  cornerRadius: 4, padding: { x: 8, y: 4 }, boxPadding: 4, usePointStyle: true, caretSize: 0, displayColors: true,
-  titleFont: { size: 12, weight: '500' }, bodyFont: { size: 12 }, titleMarginBottom: 4, bodySpacing: 4, caretPadding: 8,
-  callbacks: { label },
-});
+// Chart hover tooltips are Material 3 rich tooltips: surface container, elevation, subhead plus supporting text.
+const chartTip = Object.assign(document.createElement('div'), { id: 'chartTip', role: 'tooltip' });
+document.body.append(chartTip);
+function externalTip({ chart, tooltip: t }) {
+  if (t.opacity === 0) { chartTip.classList.remove('on'); return; }
+  const rows = (t.body || []).flatMap((b, i) => b.lines.map((text) => ({ text, color: t.labelColors?.[i]?.backgroundColor })));
+  chartTip.innerHTML = `${t.title?.length ? `<div class="tip-h">${esc(t.title.join(' '))}</div>` : ''}`
+    + rows.map((r) => `<div class="tip-r">${r.color ? `<span class="swatch" style="background:${typeof r.color === 'string' ? r.color : ''}"></span>` : ''}<span>${esc(r.text.trim())}</span></div>`).join('');
+  const box = chart.canvas.getBoundingClientRect(); const w = chartTip.offsetWidth; const h = chartTip.offsetHeight;
+  const x = box.left + t.caretX; const y = box.top + t.caretY;
+  chartTip.style.left = `${Math.max(8, Math.min(innerWidth - w - 8, x + 12 + w > innerWidth - 8 ? x - w - 12 : x + 12))}px`;
+  chartTip.style.top = `${Math.max(8, Math.min(innerHeight - h - 8, y - h / 2))}px`;
+  chartTip.classList.add('on');
+}
+const tooltip = (label) => ({ enabled: false, external: externalTip, callbacks: { label } });
 
 const centerText = {
   id: 'centerText',

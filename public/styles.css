@@ -454,3 +454,14 @@ dialog.alert .dlg-actions { margin-top: 8px; }
   #sumPop .pop-h { padding: 6px 10px 4px; font-size: 11px; }
   #sumPop button { min-height: 0; padding: 8px 10px; }
 }
+
+/* Rich tooltip (Material 3) for chart hovers */
+#chartTip {
+  position: fixed; z-index: 100; max-width: 320px; padding: 12px 16px; border-radius: var(--md-sys-shape-md);
+  background: var(--md-sys-color-surface-container); color: var(--md-sys-color-on-surface-variant);
+  box-shadow: var(--md-sys-elevation-2); pointer-events: none; font-size: 14px; line-height: 20px; letter-spacing: .25px;
+  opacity: 0; transition: opacity 150ms var(--md-sys-motion-standard);
+}
+#chartTip.on { opacity: 1; }
+#chartTip .tip-h { font-weight: 500; letter-spacing: .1px; color: var(--md-sys-color-on-surface); margin-bottom: 4px; }
+#chartTip .tip-r { display: flex; align-items: center; gap: 8px; font-variant-numeric: tabular-nums; }
