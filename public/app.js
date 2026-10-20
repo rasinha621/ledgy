@@ -294,7 +294,8 @@ function chartTheme() {
 }
 const tooltip = (label) => ({
   backgroundColor: cssVar('--tooltip-bg'), titleColor: cssVar('--tooltip-fg'), bodyColor: cssVar('--tooltip-fg'),
-  cornerRadius: 4, padding: 8, boxPadding: 4, usePointStyle: true,
+  cornerRadius: 4, padding: { x: 8, y: 4 }, boxPadding: 4, usePointStyle: true, caretSize: 0, displayColors: true,
+  titleFont: { size: 12, weight: '500' }, bodyFont: { size: 12 }, titleMarginBottom: 4, bodySpacing: 4, caretPadding: 8,
   callbacks: { label },
 });
 
@@ -409,7 +410,7 @@ function renderSummary() {
         <div class="chart-box tall"><canvas id="pie" role="img" aria-label="Year breakdown chart"></canvas></div>
         <div class="legend" id="pieLegend"></div>
       </section>
-      <section class="card chart-card">
+      <section class="card chart-card fill">
         <h3>Spending by month</h3>
         <div class="chart-box tall"><canvas id="monthly" role="img" aria-label="Spending by month chart"></canvas></div>
       </section>
@@ -435,7 +436,7 @@ function renderSummary() {
   });
   $('#pieLegend').innerHTML = pieParts.map(([l, v, col]) => `<div><span class="swatch" style="background:${col}"></span><span>${l}</span><span>${usd(v)}</span><span class="pct">${pieTotal ? pct(Math.max(0, v) / pieTotal) : '—'}</span></div>`).join('');
 
-  const bar = (label, key, color) => ({ type: 'bar', label, data: s.months.map((c) => Math.max(0, c[key])), backgroundColor: color, stack: 's', borderColor: cssVar('--surface'), borderWidth: { top: 2 }, borderRadius: 3, borderSkipped: 'start' });
+  const bar = (label, key, color) => ({ type: 'bar', label, data: s.months.map((c) => Math.max(0, c[key])), backgroundColor: color, stack: 's', borderColor: cssVar('--surface'), borderWidth: { top: 2 }, borderRadius: 3, borderSkipped: 'start', barPercentage: 0.7, categoryPercentage: 0.8 });
   charts.monthly = new Chart($('#monthly'), {
     data: {
       labels: monthLabels(),
@@ -445,14 +446,14 @@ function renderSummary() {
       ],
     },
     options: {
-      maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+      maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, layout: { padding: { top: 8, right: 8, bottom: 8 } },
       plugins: {
-        legend: { position: 'top', align: 'start', labels: { usePointStyle: true, pointStyle: 'rectRounded', boxWidth: 10, boxHeight: 10 } },
+        legend: { position: 'top', align: 'start', labels: { usePointStyle: true, pointStyle: 'rectRounded', boxWidth: 12, boxHeight: 12, padding: 24 } },
         tooltip: tooltip((ctx) => ` ${ctx.dataset.label}: ${usd(ctx.raw)}`),
       },
       scales: {
-        x: { stacked: true, grid: { display: false }, border: { display: false } },
-        y: { stacked: true, beginAtZero: true, grid: { color: cssVar('--line') }, border: { display: false }, ticks: { callback: (v) => `$${Number(v).toLocaleString('en-US')}` } },
+        x: { stacked: true, grid: { display: false }, border: { display: false }, ticks: { padding: 8 } },
+        y: { stacked: true, beginAtZero: true, grid: { color: cssVar('--line') }, border: { display: false }, ticks: { padding: 12, callback: (v) => `$${Number(v).toLocaleString('en-US')}` } },
       },
     },
   });
@@ -795,5 +796,37 @@ $('#deleteYearBtn').addEventListener('click', async () => {
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { applyPrefs(); if (doc) render(); });
 // Charts draw text on canvas, so redraw once the web font is ready.
 document.fonts?.ready.then(() => doc && render());
+
+/* ---------- Plain tooltips (Material 3): replace native title tooltips ---------- */
+const tipEl = Object.assign(document.createElement('div'), { id: 'tip', role: 'tooltip' });
+document.body.append(tipEl);
+let tipTimer = null; let tipFor = null;
+function hideTip() { clearTimeout(tipTimer); tipEl.classList.remove('on'); tipFor = null; }
+function showTip(el) {
+  const text = el.getAttribute('title') || el.dataset.tip;
+  if (el.hasAttribute('title')) { // Take over from the browser tooltip and keep the text for assistive tech
+    el.dataset.tip = text; el.removeAttribute('title');
+    if (!el.getAttribute('aria-label') && !el.textContent.trim()) el.setAttribute('aria-label', text); else el.setAttribute('aria-description', text);
+  }
+  if (!el.dataset.tip) return;
+  tipEl.textContent = el.dataset.tip; tipFor = el;
+  const r = el.getBoundingClientRect(); const t = tipEl.getBoundingClientRect();
+  const below = r.bottom + 8 + t.height < innerHeight;
+  tipEl.style.top = `${below ? r.bottom + 8 : r.top - 8 - t.height}px`;
+  tipEl.style.left = `${Math.max(8, Math.min(innerWidth - t.width - 8, r.left + r.width / 2 - t.width / 2))}px`;
+  tipEl.classList.add('on');
+}
+const tipTarget = (e) => e.target.closest?.('[title]:not([title=""]), [data-tip]');
+document.addEventListener('pointerover', (e) => {
+  const el = tipTarget(e); if (!el || el === tipFor) return;
+  hideTip();
+  tipTimer = setTimeout(() => showTip(el), 500);
+});
+document.addEventListener('pointerout', (e) => { if (tipTarget(e)) hideTip(); });
+document.addEventListener('focusin', (e) => { const el = tipTarget(e); if (el && el.matches(':focus-visible') && el.tagName !== 'INPUT') { hideTip(); showTip(el); } });
+document.addEventListener('focusout', hideTip);
+document.addEventListener('pointerdown', hideTip);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideTip(); });
+addEventListener('scroll', hideTip, true);
 
 loadYears().catch((e) => { $('#view').innerHTML = `<div class="empty"><h1>Cannot reach the server</h1><p class="muted">${esc(e.message)}</p></div>`; });
