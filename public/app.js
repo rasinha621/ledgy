@@ -1,6 +1,6 @@
 import { MONTHS, calcMonth, calcSummary, needsRowValue, listRows, sumRows, n } from '/lib/calc.js';
 
-import { Hct, SchemeTonalSpot, MaterialDynamicColors as DC, argbFromHex, hexFromArgb, customColor } from '/vendor-mcu.js';
+import { Hct, SchemeTonalSpot, MaterialDynamicColors as DC, argbFromHex, hexFromArgb } from '/vendor-mcu.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -24,8 +24,9 @@ const ROLES = ['primary', 'onPrimary', 'primaryContainer', 'onPrimaryContainer',
   'error', 'onError', 'errorContainer', 'onErrorContainer', 'surface', 'onSurface', 'onSurfaceVariant', 'surfaceContainerLowest', 'surfaceContainerLow',
   'surfaceContainer', 'surfaceContainerHigh', 'surfaceContainerHighest', 'outline', 'outlineVariant', 'inverseSurface', 'inverseOnSurface', 'scrim', 'shadow'];
 const kebab = (r) => r.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
-// Data colors are M3 custom colors: blended toward the seed so they sit well with the theme.
-const DATA_COLORS = { '--needs': '#c4581f', '--savings': '#1b8a63', '--bank': '#b88300' };
+// Chart colors are spread around the seed's hue in HCT at the same tones M3 uses for accents (40 light, 80 dark),
+// so they always stay distinct from each other and readable on the surface.
+const DATA_HUES = { '--wants': 0, '--needs': 90, '--savings': 180, '--bank': 270 };
 const loadPrefs = () => {
   let p = {};
   try { p = JSON.parse(store.get('ledgy.prefs') || '{}') || {}; } catch { /* ignore bad JSON */ }
@@ -40,11 +41,8 @@ const monthLabels = () => MONTHS.map((_, i) => monthLabel(i));
 const seedVars = (seed, dark) => {
   const src = argbFromHex(seed); const scheme = new SchemeTonalSpot(Hct.fromInt(src), dark, 0); const vars = {};
   for (const r of ROLES) vars[`--md-sys-color-${kebab(r)}`] = hexFromArgb(DC[r].getArgb(scheme));
-  vars['--wants'] = vars['--md-sys-color-primary'];
-  for (const [v, base] of Object.entries(DATA_COLORS)) {
-    const c = customColor(src, { name: v, value: argbFromHex(base), blend: true });
-    vars[v] = hexFromArgb((dark ? c.dark : c.light).color);
-  }
+  const { hue } = Hct.fromInt(src);
+  for (const [v, off] of Object.entries(DATA_HUES)) vars[v] = hexFromArgb(Hct.from((hue + off) % 360, 60, dark ? 80 : 40).toInt());
   vars['--free'] = vars['--md-sys-color-outline-variant']; vars['--ok'] = vars['--savings'];
   return vars;
 };
