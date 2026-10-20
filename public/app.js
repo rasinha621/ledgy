@@ -209,7 +209,7 @@ function cardHtml(sec, month) {
     ? `<div class="card-sub"><span>Budget <span data-k="${sec}Budget"></span></span><span data-k="${sec}Pct"></span></div>
        <div class="meter" data-meter="${sec}"><span style="background:var(${meta.color})"></span></div>`
     : `<div class="feeds" data-feeds="${sec}"></div>`;
-  const foot = sec === 'savings' ? '<div class="feeds" style="padding:0 14px 10px">Rows 1–4 feed the Summary: 401k, HSA, Roth, Bank savings.</div>' : '';
+  const foot = sec === 'savings' ? '<div class="feeds" style="padding:0 14px 10px"></div>' : '';
   return `<section class="card" data-sec="${sec}">
     <div class="card-h">
       <div class="card-t"><span class="swatch" style="background:var(${meta.color})"></span>${esc(meta.title)}
