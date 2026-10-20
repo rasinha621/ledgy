@@ -24,8 +24,6 @@
     <div class="actions">
       <span id="saveState" class="save-state" aria-live="polite"></span>
       <button id="newYearBtn" class="btn ghost">New year</button>
-      <button id="importBtn" class="btn ghost" title="Import an .xlsx file">Import</button>
-      <a id="exportBtn" class="btn ghost" href="#" download title="Download as .xlsx with formulas">Export</a>
       <button id="settingsBtn" class="btn ghost" aria-label="Settings">Settings</button>
     </div>
   </header>
@@ -112,6 +110,14 @@
         </div>
       </fieldset>
       <fieldset>
+        <legend>Data</legend>
+        <div class="data-actions">
+          <button type="button" id="importBtn" class="btn" title="Import an .xlsx file">Import</button>
+          <a id="exportBtn" class="btn" href="#" download title="Download as .xlsx with formulas">Export</a>
+          <a id="backupLink" class="btn" href="#" download title="Download this year as JSON">JSON backup</a>
+        </div>
+      </fieldset>
+      <fieldset>
         <legend>Preferences (this browser)</legend>
         <div class="grid3">
           <label class="tf sel"><select name="theme"><option value="auto">Auto</option><option value="light">Light</option><option value="dark">Dark</option></select><span>Theme</span></label>
@@ -128,7 +134,6 @@
           </div>
         </div>
       </fieldset>
-      <p class="muted"><a id="backupLink" href="#" download>Download JSON backup</a></p>
       <div class="dlg-actions">
         <button type="button" id="deleteYearBtn" class="btn danger">Delete year</button>
         <span class="spacer"></span>

@@ -26,7 +26,7 @@ const ROLES = ['primary', 'onPrimary', 'primaryContainer', 'onPrimaryContainer',
 const kebab = (r) => r.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
 // Chart colors are spread around the seed's hue in HCT at the same tones M3 uses for accents (40 light, 80 dark),
 // so they always stay distinct from each other and readable on the surface.
-const DATA_HUES = { '--wants': 0, '--needs': 90, '--savings': 180, '--bank': 270 };
+const DATA_HUES = { '--wants': 0, '--needs': 120, '--savings': 240 };
 const loadPrefs = () => {
   let p = {};
   try { p = JSON.parse(store.get('ledgy.prefs') || '{}') || {}; } catch { /* ignore bad JSON */ }
@@ -81,7 +81,7 @@ const findList = (text, group) => {
 };
 const secMeta = (sec) => SEC[sec] || { title: listInfo(sec)?.title ?? sec, color: `--${listInfo(sec)?.group ?? 'needs'}`, ph: 'Note' };
 const rowsOf = (month, sec) => (BASE_SECS.includes(sec) ? month[sec] : ((month.custom ||= {})[sec] ||= []));
-const SUMMARY_SAVINGS = ['401k', 'HSA', 'Roth', 'Bank/Fidelity Savings'];
+const SUMMARY_SAVINGS = ['401k', 'HSA', 'Roth', 'Cash', 'Investing'];
 
 let years = [];
 let doc = null;
@@ -166,7 +166,7 @@ function render() {
   Object.values(charts).forEach((c) => c.destroy());
   for (const k of Object.keys(charts)) delete charts[k];
   const has = !!doc;
-  for (const id of ['#exportBtn', '#settingsBtn']) $(id).hidden = !has;
+  $('#settingsBtn').hidden = !has;
   if (!has) { $('#tabs').innerHTML = ''; $('#view').innerHTML = emptyState(); return; }
   $('#exportBtn').href = `/api/years/${doc.year}/export.xlsx`;
   renderTabs();
@@ -192,7 +192,7 @@ function renderTabs() {
 function rowHtml(sec, r, i, month) {
   const link = LINKABLE.includes(sec) && r.kind && r.kind !== 'manual' ? listInfo(r.kind) : null;
   const val = link ? fmt(needsRowValue(r, month)) : esc(amtShow(r.amount));
-  const sum = sec === 'savings' && i < 4 ? `Summary: ${SUMMARY_SAVINGS[i]}. ` : '';
+  const sum = sec === 'savings' && i < SUMMARY_SAVINGS.length ? `Summary: ${SUMMARY_SAVINGS[i]}. ` : '';
   const hint = LINKABLE.includes(sec) ? ` title="${sum}${link ? `Total of ${esc(link.title)}. Type a number to unlink.` : 'Type an amount, or pick a list to total'}"` : '';
   return `<li class="row" data-i="${i}">
     <input class="amt ${n(r.amount) < 0 ? 'neg' : ''} ${link ? 'linked' : ''}" data-i="${i}" inputmode="decimal" autocomplete="off" value="${val}" aria-label="Amount"${hint}>
@@ -397,7 +397,7 @@ function renderSummary() {
   const s = calcSummary(doc);
   const cols = [
     ['Total income', s.totalIncome], ['Total Wants', s.totalWants], ['Total Needs', s.totalNeeds],
-    ['Total Savings', s.totalSavings], ['Bank/Fidelity Savings', s.bankSavings],
+    ['Total Savings', s.totalSavings], ['Cash', s.cashSavings], ['Investing', s.investingSavings],
     ['Roth', s.roth, doc.settings.limitRoth], ['HSA', s.hsa, doc.settings.limitHsa], ['401k', s.k401, doc.settings.limit401k],
   ];
   const rows = s.months.map((c, i) => `<tr data-goto="${i}" style="cursor:pointer">
@@ -438,7 +438,7 @@ function renderSummary() {
   chartTheme();
   const pieParts = [
     ['Total Wants', s.totalWants, cssVar('--wants')], ['Total Needs', s.totalNeeds, cssVar('--needs')],
-    ['Retirement/HSA', s.retirementHsa, cssVar('--savings')], ['Bank/Fidelity Savings', s.bankSavings, cssVar('--bank')],
+    ['Retirement/HSA', s.retirementHsa, cssVar('--savings')],
   ];
   const pieTotal = pieParts.reduce((t, p) => t + Math.max(0, p[1]), 0);
   charts.pie = new Chart($('#pie'), {
@@ -684,7 +684,7 @@ function openImport() {
   $('#importGo').disabled = false;
   $('#importDlg').showModal();
 }
-$('#importBtn').addEventListener('click', openImport);
+$('#importBtn').addEventListener('click', () => { $('#settingsDlg').close(); openImport(); });
 $('#importForm').addEventListener('submit', async (e) => {
   if (e.submitter?.value === 'cancel') return;
   e.preventDefault();

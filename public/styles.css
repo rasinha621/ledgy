@@ -33,7 +33,6 @@
   --wants: #415f91;
   --needs: #c4581f;
   --savings: #1b8a63;
-  --bank: #b88300;
   --free: #c4c6d0;
   --ok: #1b6b47;
 
@@ -88,7 +87,7 @@
     --md-sys-color-surface-container-highest: #33353a;
     --md-sys-color-outline: #8e9099; --md-sys-color-outline-variant: #44474e;
     --md-sys-color-inverse-surface: #e2e2e9; --md-sys-color-inverse-on-surface: #2e3036;
-    --wants: #7fa6e8; --needs: #e57a45; --savings: #3fb987; --bank: #d9a521; --free: #44474e; --ok: #6ad3a1;
+    --wants: #7fa6e8; --needs: #e57a45; --savings: #3fb987; --free: #44474e; --ok: #6ad3a1;
   }
 }
 :root[data-theme="dark"] {
@@ -105,7 +104,7 @@
   --md-sys-color-surface-container-highest: #33353a;
   --md-sys-color-outline: #8e9099; --md-sys-color-outline-variant: #44474e;
   --md-sys-color-inverse-surface: #e2e2e9; --md-sys-color-inverse-on-surface: #2e3036;
-  --wants: #7fa6e8; --needs: #e57a45; --savings: #3fb987; --bank: #d9a521; --free: #44474e; --ok: #6ad3a1;
+  --wants: #7fa6e8; --needs: #e57a45; --savings: #3fb987; --free: #44474e; --ok: #6ad3a1;
 }
 
 * { box-sizing: border-box; }
@@ -465,3 +464,5 @@ dialog.alert .dlg-actions { margin-top: 8px; }
 #chartTip.on { opacity: 1; }
 #chartTip .tip-h { font-weight: 500; letter-spacing: .1px; color: var(--md-sys-color-on-surface); margin-bottom: 4px; }
 #chartTip .tip-r { display: flex; align-items: center; gap: 8px; font-variant-numeric: tabular-nums; }
+
+.data-actions { display: flex; flex-wrap: wrap; gap: 8px; }
