@@ -13,6 +13,43 @@ const store = {
 };
 const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
+/* ---------- Preferences (per browser) ---------- */
+const FULL_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const MONTH_STYLES = { upper: 'JAN', title: 'Jan', num: '01', full: 'January' };
+const COLOR_PREFS = [
+  ['--accent', 'Accent'], ['--wants', 'Wants'], ['--needs', 'Needs'], ['--savings', 'Savings'], ['--bank', 'Bank savings'],
+];
+const loadPrefs = () => {
+  let p = {};
+  try { p = JSON.parse(store.get('ledgy.prefs') || '{}') || {}; } catch { /* ignore bad JSON */ }
+  return { theme: ['light', 'dark'].includes(p.theme) ? p.theme : 'auto', monthStyle: MONTH_STYLES[p.monthStyle] ? p.monthStyle : 'upper', colors: p.colors && typeof p.colors === 'object' ? p.colors : {} };
+};
+let prefs = loadPrefs();
+const monthLabel = (i) => {
+  const st = prefs.monthStyle;
+  return st === 'full' ? FULL_MONTHS[i] : st === 'num' ? String(i + 1).padStart(2, '0') : st === 'title' ? FULL_MONTHS[i].slice(0, 3) : MONTHS[i];
+};
+const monthLabels = () => MONTHS.map((_, i) => monthLabel(i));
+// Pick black or white text for a background color.
+const onColor = (hex) => {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.4 ? '#000000' : '#ffffff';
+};
+function applyPrefs() {
+  const root = document.documentElement;
+  if (prefs.theme === 'auto') root.removeAttribute('data-theme'); else root.dataset.theme = prefs.theme;
+  // Clear earlier overrides first so the defaults below are read for the active theme.
+  for (const v of ['--wants', '--needs', '--savings', '--bank', '--md-sys-color-primary', '--md-sys-color-on-primary']) root.style.removeProperty(v);
+  for (const [v] of COLOR_PREFS) {
+    const c = prefs.colors[v];
+    if (!/^#[0-9a-f]{6}$/i.test(c || '')) continue;
+    if (v === '--accent') {
+      root.style.setProperty('--md-sys-color-primary', c); root.style.setProperty('--md-sys-color-on-primary', onColor(c));
+    } else root.style.setProperty(v, c);
+  }
+}
+applyPrefs();
+
 const SEC = {
   wants: { title: 'Wants', color: '--wants', cols: 'A / B', ph: 'Note' },
   needs: { title: 'Needs', color: '--needs', cols: 'E / F', ph: 'Label' },
@@ -137,9 +174,9 @@ function emptyState() {
 
 function renderTabs() {
   const sums = doc.months.map((m) => calcMonth(m, doc.settings));
-  $('#tabs').innerHTML = MONTHS.map((m, i) => {
+  $('#tabs').innerHTML = MONTHS.map((_, i) => {
     const over = sums[i].hasIncome && sums[i].remaining < -0.005;
-    return `<button class="tab" role="tab" data-tab="${i}" aria-selected="${tab === i}" title="${over ? 'Over income' : ''}">${m}${over ? '<span class="dot" aria-label="over income"></span>' : ''}</button>`;
+    return `<button class="tab" role="tab" data-tab="${i}" aria-selected="${tab === i}" title="${over ? 'Over income' : ''}">${monthLabel(i)}${over ? '<span class="dot" aria-label="over income"></span>' : ''}</button>`;
   }).join('') + `<button class="tab sum" role="tab" data-tab="summary" aria-selected="${tab === 'summary'}">Summary</button>`;
 }
 
@@ -344,7 +381,7 @@ function renderSummary() {
     ['Roth', s.roth, doc.settings.limitRoth], ['HSA', s.hsa, doc.settings.limitHsa], ['401k', s.k401, doc.settings.limit401k],
   ];
   const rows = s.months.map((c, i) => `<tr data-goto="${i}" style="cursor:pointer">
-      <td>${MONTHS[i]}</td><td>${c.hasIncome ? fmt(c.income) : '—'}</td>
+      <td>${monthLabel(i)}</td><td>${c.hasIncome ? fmt(c.income) : '—'}</td>
       <td>${fmt(c.wantsTotal)}</td><td class="${c.wantsPct > 1 ? 'over' : ''}">${pct(c.wantsPct)}</td>
       <td>${fmt(c.needsTotal)}</td><td class="${c.needsPct > 1 ? 'over' : ''}">${pct(c.needsPct)}</td>
       <td>${fmt(c.savingsTotal)}</td><td>${pct(c.savingsPct)}</td>
@@ -395,7 +432,7 @@ function renderSummary() {
   const bar = (label, key, color) => ({ type: 'bar', label, data: s.months.map((c) => Math.max(0, c[key])), backgroundColor: color, stack: 's', borderColor: cssVar('--surface'), borderWidth: { top: 2 }, borderRadius: 3, borderSkipped: 'start' });
   charts.monthly = new Chart($('#monthly'), {
     data: {
-      labels: MONTHS,
+      labels: monthLabels(),
       datasets: [
         { type: 'line', label: 'Income', data: s.months.map((c) => (c.hasIncome ? c.income : null)), borderColor: cssVar('--text-2'), borderWidth: 2, borderDash: [5, 4], pointRadius: 4, pointBackgroundColor: cssVar('--surface'), pointBorderWidth: 2, spanGaps: false, order: 0 },
         bar('Wants', 'wantsTotal', cssVar('--wants')), bar('Needs', 'needsTotal', cssVar('--needs')), bar('Savings', 'savingsTotal', cssVar('--savings')),
@@ -496,7 +533,7 @@ view.addEventListener('click', async (e) => {
   if (t.dataset.act === 'sec-add' || t.dataset.act === 'sec-rename') {
     const sec = t.dataset.act === 'sec-rename' ? doc.months[tab].sections.find((s) => s.key === t.dataset.key) : null;
     listEditing = sec;
-    $('#listDlgTitle').textContent = sec ? `Edit list (${MONTHS[tab]})` : `New summation list (${MONTHS[tab]})`;
+    $('#listDlgTitle').textContent = sec ? `Edit list (${monthLabel(tab)})` : `New summation list (${monthLabel(tab)})`;
     const f = $('#listForm'); f.elements.title.value = sec?.title ?? ''; f.elements.group.value = sec?.group ?? 'needs';
     $('#listDlg').showModal(); f.elements.title.focus(); return;
   }
@@ -611,7 +648,7 @@ $('#listForm').addEventListener('submit', (e) => {
   const title = f.elements.title.value.trim().slice(0, 60); const group = f.elements.group.value;
   if (!title) return;
   if (sumLists().some((l) => l.key !== listEditing?.key && l.title.toLowerCase() === title.toLowerCase())) {
-    e.preventDefault(); askDialog({ title: 'Name already used', text: `${MONTHS[tab]} already has a list named “${title}”. Choose a different name.`, cancel: null }); return;
+    e.preventDefault(); askDialog({ title: 'Name already used', text: `${monthLabel(tab)} already has a list named “${title}”. Choose a different name.`, cancel: null }); return;
   }
   if (listEditing) {
     if (listEditing.group !== group) { // rows in the old column can no longer link to it
@@ -670,6 +707,20 @@ $('#newForm').addEventListener('submit', async (e) => {
   } catch (err) { askDialog({ title: err.status === 409 ? `${y} already exists` : 'Could not create the year', text: err.status === 409 ? 'Pick a different year, or select it from the year menu.' : err.message, cancel: null }); }
 });
 
+let draftColors = {};
+const toHex = (c) => {
+  if (/^#[0-9a-f]{6}$/i.test(c)) return c.toLowerCase();
+  const ctx = document.createElement('canvas').getContext('2d'); ctx.fillStyle = c; return ctx.fillStyle;
+};
+$('#settingsForm').addEventListener('input', (e) => {
+  if (e.target.dataset.cssvar) draftColors[e.target.dataset.cssvar] = e.target.value;
+});
+$('#resetColors').addEventListener('click', () => {
+  const f = $('#settingsForm'); draftColors = {};
+  const saved = prefs.colors; prefs.colors = {}; applyPrefs();
+  for (const [v] of COLOR_PREFS) f[`color${v}`].value = toHex(cssVar(v));
+  prefs.colors = saved; applyPrefs();
+});
 $('#settingsBtn').addEventListener('click', () => {
   const f = $('#settingsForm'); const s = doc.settings;
   $('#setYearLbl').textContent = doc.year;
@@ -679,6 +730,9 @@ $('#settingsBtn').addEventListener('click', () => {
   f.needsExtra.value = s.needsExtra; f.rothStart.value = s.rothStart;
   f.limit401k.value = s.limit401k || 0; f.limitHsa.value = s.limitHsa || 0; f.limitRoth.value = s.limitRoth || 0;
   $('#backupLink').href = `/api/years/${doc.year}/backup.json`;
+  f.theme.value = prefs.theme; f.monthStyle.value = prefs.monthStyle;
+  draftColors = { ...prefs.colors };
+  for (const [v] of COLOR_PREFS) f[`color${v}`].value = toHex(draftColors[v] || cssVar(v));
   $('#settingsDlg').showModal();
 });
 $('#settingsForm').addEventListener('submit', (e) => {
@@ -694,6 +748,8 @@ $('#settingsForm').addEventListener('submit', (e) => {
     limit401k: Math.max(0, num(f.limit401k.value, s.limit401k || 0)), limitHsa: Math.max(0, num(f.limitHsa.value, s.limitHsa || 0)),
     limitRoth: Math.max(0, num(f.limitRoth.value, s.limitRoth || 0)),
   };
+  prefs = { theme: f.theme.value, monthStyle: f.monthStyle.value, colors: draftColors };
+  store.set('ledgy.prefs', JSON.stringify(prefs)); applyPrefs();
   scheduleSave(); render();
 });
 $('#deleteYearBtn').addEventListener('click', async () => {

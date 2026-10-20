@@ -396,3 +396,7 @@ dialog.alert .dlg-actions { margin-top: 8px; }
 #sumPop button { display: flex; justify-content: space-between; gap: 16px; width: 100%; padding: 8px 10px; border: 0; border-radius: var(--md-sys-shape-xs); background: none; color: var(--md-sys-color-on-surface); font: inherit; font-size: 14px; cursor: pointer; text-align: left; font-variant-numeric: tabular-nums; }
 #sumPop button:hover, #sumPop button.hi { background: color-mix(in srgb, var(--md-sys-color-on-surface) 10%, transparent); }
 #sumPop button.cur { color: var(--md-sys-color-primary); font-weight: 500; }
+
+.colors { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.color { display: flex; align-items: center; gap: 6px; font-size: 14px; }
+.color input { width: 32px; height: 32px; padding: 0; border: 1px solid var(--md-sys-color-outline); border-radius: var(--md-sys-shape-full); background: none; cursor: pointer; }
