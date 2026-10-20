@@ -226,10 +226,11 @@ function cardHtml(sec, month) {
 function renderMonth() {
   const m = doc.months[tab];
   $('#view').innerHTML = `
-    <div class="kpis">
+    <div class="kpis"><div class="kpis-main">
       <div class="kpi"><div class="k">Income </div><input class="v" id="income" inputmode="decimal" value="${esc(amtShow(m.income))}" placeholder="0.00" aria-label="Income"></div>
       <div class="kpi"><div class="k">Allocated </div><div class="v" data-k="allocated"></div></div>
       <div class="kpi"><div class="k">Percentage spent </div><div class="v" data-k="allocatedPct"></div></div>
+      </div>
       <div class="kpi"><div class="k">Amount remaining </div><div class="v" data-k="remaining"></div></div>
     </div>
     <div class="month-grid">
