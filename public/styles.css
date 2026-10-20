@@ -427,3 +427,26 @@ dialog.alert .dlg-actions { margin-top: 8px; }
   opacity: 0; transition: opacity 150ms var(--md-sys-motion-standard);
 }
 #tip.on { opacity: 1; }
+
+/* Compact density: the tighter spacing used before the Material 3 spacing pass */
+:root[data-density="compact"] {
+  .card-t { gap: 10px; }
+  .card-sub, .feeds { margin-top: 6px; }
+  .meter { margin-top: 10px; }
+  .card-h { padding: 16px 16px 12px; }
+  .kpis { gap: 12px; margin-bottom: 16px; }
+  .row { grid-template-columns: 96px minmax(0, 1fr) 32px; padding: 1px 0; }
+  .row input { height: 32px; }
+  .row .calc { padding: 6px 8px; }
+  .icon-btn { width: 32px; height: 32px; }
+  .card-t .sec-btn { width: 24px; height: 24px; font-size: 12px; }
+  .add { margin: 4px 8px 12px; }
+  .legend { gap: 6px; margin-top: 12px; }
+  .chart-card .sub { margin-bottom: 12px; }
+  .grid3 { gap: 12px; }
+  fieldset { padding: 12px 16px 16px; gap: 8px; }
+  .banner { gap: 12px; }
+  .banner .btn { height: 32px; }
+  #sumPop .pop-h { padding: 6px 10px 4px; font-size: 11px; }
+  #sumPop button { min-height: 0; padding: 8px 10px; }
+}

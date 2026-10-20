@@ -30,7 +30,7 @@ const DATA_HUES = { '--wants': 0, '--needs': 90, '--savings': 180, '--bank': 270
 const loadPrefs = () => {
   let p = {};
   try { p = JSON.parse(store.get('ledgy.prefs') || '{}') || {}; } catch { /* ignore bad JSON */ }
-  return { theme: ['light', 'dark'].includes(p.theme) ? p.theme : 'auto', monthStyle: MONTH_STYLES[p.monthStyle] ? p.monthStyle : 'upper', seed: /^#[0-9a-f]{6}$/i.test(p.seed || '') ? p.seed.toLowerCase() : null };
+  return { theme: ['light', 'dark'].includes(p.theme) ? p.theme : 'auto', density: p.density === 'compact' ? 'compact' : 'normal', monthStyle: MONTH_STYLES[p.monthStyle] ? p.monthStyle : 'upper', seed: /^#[0-9a-f]{6}$/i.test(p.seed || '') ? p.seed.toLowerCase() : null };
 };
 let prefs = loadPrefs();
 const monthLabel = (i) => {
@@ -50,6 +50,7 @@ let appliedVars = [];
 function applyPrefs(p = prefs) {
   const root = document.documentElement;
   if (p.theme === 'auto') root.removeAttribute('data-theme'); else root.dataset.theme = p.theme;
+  if (p.density === 'compact') root.dataset.density = 'compact'; else root.removeAttribute('data-density');
   appliedVars.forEach((v) => root.style.removeProperty(v)); appliedVars = [];
   if (!p.seed) return;
   const dark = p.theme === 'dark' || (p.theme === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
@@ -731,7 +732,7 @@ function syncSeedSliders() {
   f.seedHue.value = Math.round(h.hue); f.seedChroma.value = Math.round(h.chroma); f.seedHex.value = hexFromArgb(h.toInt());
   f.seedChroma.style.setProperty('--track', `linear-gradient(90deg, ${hexFromArgb(Hct.from(h.hue, 0, 50).toInt())}, ${hexFromArgb(Hct.from(h.hue, 100, 50).toInt())})`);
 }
-function previewDraft() { applyPrefs({ ...prefs, theme: $('#settingsForm').theme.value, seed: draftSeed }); }
+function previewDraft() { const f = $('#settingsForm'); applyPrefs({ ...prefs, theme: f.theme.value, density: f.density.value, seed: draftSeed }); }
 $('#seedChips').addEventListener('click', (e) => {
   const b = e.target.closest('[data-seed]'); if (!b) return;
   if (b.dataset.seed === 'custom') { seedPanelOpen = !seedPanelOpen; if (!draftSeed) draftSeed = '#415f91'; syncSeedSliders(); } else { draftSeed = b.dataset.seed || null; seedPanelOpen = false; }
@@ -752,6 +753,7 @@ $('#seedCustom').addEventListener('input', (e) => {
   previewDraft();
 });
 $('#settingsForm').theme.addEventListener('change', previewDraft);
+$('#settingsForm').density.addEventListener('change', previewDraft);
 // Cancel, Escape or Save: drop the live preview and use the saved preferences.
 $('#settingsDlg').addEventListener('close', () => { applyPrefs(); });
 $('#settingsBtn').addEventListener('click', () => {
@@ -763,7 +765,7 @@ $('#settingsBtn').addEventListener('click', () => {
   f.needsExtra.value = s.needsExtra; f.rothStart.value = s.rothStart;
   f.limit401k.value = s.limit401k || 0; f.limitHsa.value = s.limitHsa || 0; f.limitRoth.value = s.limitRoth || 0;
   $('#backupLink').href = `/api/years/${doc.year}/backup.json`;
-  f.theme.value = prefs.theme; f.monthStyle.value = prefs.monthStyle;
+  f.theme.value = prefs.theme; f.density.value = prefs.density; f.monthStyle.value = prefs.monthStyle;
   draftSeed = prefs.seed; seedPanelOpen = false; $('#seedCustom').querySelector('input[type=range]').style.setProperty('--track', hueTrack());
   renderSeedPicker();
   $('#settingsDlg').showModal();
@@ -781,7 +783,7 @@ $('#settingsForm').addEventListener('submit', (e) => {
     limit401k: Math.max(0, num(f.limit401k.value, s.limit401k || 0)), limitHsa: Math.max(0, num(f.limitHsa.value, s.limitHsa || 0)),
     limitRoth: Math.max(0, num(f.limitRoth.value, s.limitRoth || 0)),
   };
-  prefs = { theme: f.theme.value, monthStyle: f.monthStyle.value, seed: draftSeed };
+  prefs = { theme: f.theme.value, density: f.density.value, monthStyle: f.monthStyle.value, seed: draftSeed };
   store.set('ledgy.prefs', JSON.stringify(prefs)); applyPrefs();
   scheduleSave(); render();
 });
