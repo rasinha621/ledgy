@@ -438,7 +438,7 @@ function renderSummary() {
   chartTheme();
   const pieParts = [
     ['Total Wants', s.totalWants, cssVar('--wants')], ['Total Needs', s.totalNeeds, cssVar('--needs')],
-    ['Retirement/HSA', s.retirementHsa, cssVar('--savings')],
+    ['Total Savings', s.totalSavings, cssVar('--savings')],
   ];
   const pieTotal = pieParts.reduce((t, p) => t + Math.max(0, p[1]), 0);
   charts.pie = new Chart($('#pie'), {

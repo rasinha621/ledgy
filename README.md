@@ -53,7 +53,7 @@ row 3 = Roth (`I4`), row 4 = Cash (`I5`), row 5 = Investing (`I6`). The original
 
 Spreadsheet behavior that is kept by default (change it in **Settings**):
 - HSA and 401k totals add JAN–NOV only (DEC is not in the formula).
-- The pie chart on the Summary page shows Wants, Needs and Retirement/HSA (savings other than Cash and Investing).
+- The pie chart on the Summary page shows Wants, Needs and Total Savings (Cash and Investing included).
 - Roth total starts from a fixed balance (`4808.49` in the imported file).
 - The budget percentages and the +$200 for Needs.
 
