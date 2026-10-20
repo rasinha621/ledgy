@@ -1,5 +1,7 @@
 import { MONTHS, calcMonth, calcSummary, needsRowValue, listRows, sumRows, n } from '/lib/calc.js';
 
+import { Hct, SchemeTonalSpot, MaterialDynamicColors as DC, argbFromHex, hexFromArgb } from '/vendor-mcu.js';
+
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 // Round like Excel: use 15 significant digits first, then round half away from zero.
@@ -12,6 +14,49 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, v); } catch { /* storage not available */ } },
 };
 const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+/* ---------- Preferences (per browser) ---------- */
+const FULL_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const MONTH_STYLES = { upper: 'JAN', title: 'Jan', num: '01', full: 'January' };
+// M3 color system: one seed color generates the tonal palettes and every color role for light and dark.
+const SEED_PRESETS = ['#6750a4', '#006a6a', '#386a20', '#8b5000', '#a43b5c', '#006874'];
+const ROLES = ['primary', 'onPrimary', 'primaryContainer', 'onPrimaryContainer', 'secondary', 'onSecondary', 'secondaryContainer', 'onSecondaryContainer',
+  'error', 'onError', 'errorContainer', 'onErrorContainer', 'surface', 'onSurface', 'onSurfaceVariant', 'surfaceContainerLowest', 'surfaceContainerLow',
+  'surfaceContainer', 'surfaceContainerHigh', 'surfaceContainerHighest', 'outline', 'outlineVariant', 'inverseSurface', 'inverseOnSurface', 'scrim', 'shadow'];
+const kebab = (r) => r.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
+// Chart colors are spread around the seed's hue in HCT at the same tones M3 uses for accents (40 light, 80 dark),
+// so they always stay distinct from each other and readable on the surface.
+const DATA_HUES = { '--wants': 0, '--needs': 120, '--savings': 240 };
+const loadPrefs = () => {
+  let p = {};
+  try { p = JSON.parse(store.get('ledgy.prefs') || '{}') || {}; } catch { /* ignore bad JSON */ }
+  return { theme: ['light', 'dark'].includes(p.theme) ? p.theme : 'auto', density: p.density === 'compact' ? 'compact' : 'normal', monthStyle: MONTH_STYLES[p.monthStyle] ? p.monthStyle : 'upper', seed: /^#[0-9a-f]{6}$/i.test(p.seed || '') ? p.seed.toLowerCase() : null };
+};
+let prefs = loadPrefs();
+const monthLabel = (i) => {
+  const st = prefs.monthStyle;
+  return st === 'full' ? FULL_MONTHS[i] : st === 'num' ? String(i + 1).padStart(2, '0') : st === 'title' ? FULL_MONTHS[i].slice(0, 3) : MONTHS[i];
+};
+const monthLabels = () => MONTHS.map((_, i) => monthLabel(i));
+const seedVars = (seed, dark) => {
+  const src = argbFromHex(seed); const scheme = new SchemeTonalSpot(Hct.fromInt(src), dark, 0); const vars = {};
+  for (const r of ROLES) vars[`--md-sys-color-${kebab(r)}`] = hexFromArgb(DC[r].getArgb(scheme));
+  const { hue } = Hct.fromInt(src);
+  for (const [v, off] of Object.entries(DATA_HUES)) vars[v] = hexFromArgb(Hct.from((hue + off) % 360, 60, dark ? 80 : 40).toInt());
+  vars['--free'] = vars['--md-sys-color-outline-variant']; vars['--ok'] = vars['--savings'];
+  return vars;
+};
+let appliedVars = [];
+function applyPrefs(p = prefs) {
+  const root = document.documentElement;
+  if (p.theme === 'auto') root.removeAttribute('data-theme'); else root.dataset.theme = p.theme;
+  if (p.density === 'compact') root.dataset.density = 'compact'; else root.removeAttribute('data-density');
+  appliedVars.forEach((v) => root.style.removeProperty(v)); appliedVars = [];
+  if (!p.seed) return;
+  const dark = p.theme === 'dark' || (p.theme === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
+  for (const [k, v] of Object.entries(seedVars(p.seed, dark))) { root.style.setProperty(k, v); appliedVars.push(k); }
+}
+applyPrefs();
 
 const SEC = {
   wants: { title: 'Wants', color: '--wants', cols: 'A / B', ph: 'Note' },
@@ -36,7 +81,7 @@ const findList = (text, group) => {
 };
 const secMeta = (sec) => SEC[sec] || { title: listInfo(sec)?.title ?? sec, color: `--${listInfo(sec)?.group ?? 'needs'}`, ph: 'Note' };
 const rowsOf = (month, sec) => (BASE_SECS.includes(sec) ? month[sec] : ((month.custom ||= {})[sec] ||= []));
-const SUMMARY_SAVINGS = ['401k', 'HSA', 'Roth', 'Bank/Fidelity Savings'];
+const SUMMARY_SAVINGS = ['401k', 'HSA', 'Roth', 'Cash', 'Investing'];
 
 let years = [];
 let doc = null;
@@ -117,10 +162,11 @@ async function loadYear(y) {
 
 /* ---------- Render ---------- */
 function render() {
+  chartTip.classList.remove('on');
   Object.values(charts).forEach((c) => c.destroy());
   for (const k of Object.keys(charts)) delete charts[k];
   const has = !!doc;
-  for (const id of ['#exportBtn', '#settingsBtn']) $(id).hidden = !has;
+  $('#settingsBtn').hidden = !has;
   if (!has) { $('#tabs').innerHTML = ''; $('#view').innerHTML = emptyState(); return; }
   $('#exportBtn').href = `/api/years/${doc.year}/export.xlsx`;
   renderTabs();
@@ -137,16 +183,16 @@ function emptyState() {
 
 function renderTabs() {
   const sums = doc.months.map((m) => calcMonth(m, doc.settings));
-  $('#tabs').innerHTML = MONTHS.map((m, i) => {
+  $('#tabs').innerHTML = MONTHS.map((_, i) => {
     const over = sums[i].hasIncome && sums[i].remaining < -0.005;
-    return `<button class="tab" role="tab" data-tab="${i}" aria-selected="${tab === i}" title="${over ? 'Over income' : ''}">${m}${over ? '<span class="dot" aria-label="over income"></span>' : ''}</button>`;
+    return `<button class="tab" role="tab" data-tab="${i}" aria-selected="${tab === i}" title="${over ? 'Over income' : ''}">${monthLabel(i)}${over ? '<span class="dot" aria-label="over income"></span>' : ''}</button>`;
   }).join('') + `<button class="tab sum" role="tab" data-tab="summary" aria-selected="${tab === 'summary'}">Summary</button>`;
 }
 
 function rowHtml(sec, r, i, month) {
   const link = LINKABLE.includes(sec) && r.kind && r.kind !== 'manual' ? listInfo(r.kind) : null;
   const val = link ? fmt(needsRowValue(r, month)) : esc(amtShow(r.amount));
-  const sum = sec === 'savings' && i < 4 ? `Summary: ${SUMMARY_SAVINGS[i]}. ` : '';
+  const sum = sec === 'savings' && i < SUMMARY_SAVINGS.length ? `Summary: ${SUMMARY_SAVINGS[i]}. ` : '';
   const hint = LINKABLE.includes(sec) ? ` title="${sum}${link ? `Total of ${esc(link.title)}. Type a number to unlink.` : 'Type an amount, or pick a list to total'}"` : '';
   return `<li class="row" data-i="${i}">
     <input class="amt ${n(r.amount) < 0 ? 'neg' : ''} ${link ? 'linked' : ''}" data-i="${i}" inputmode="decimal" autocomplete="off" value="${val}" aria-label="Amount"${hint}>
@@ -164,7 +210,7 @@ function cardHtml(sec, month) {
     ? `<div class="card-sub"><span>Budget <span data-k="${sec}Budget"></span></span><span data-k="${sec}Pct"></span></div>
        <div class="meter" data-meter="${sec}"><span style="background:var(${meta.color})"></span></div>`
     : `<div class="feeds" data-feeds="${sec}"></div>`;
-  const foot = sec === 'savings' ? '<div class="feeds" style="padding:0 14px 10px">Rows 1–4 feed the Summary: 401k, HSA, Roth, Bank savings.</div>' : '';
+  const foot = sec === 'savings' ? '<div class="feeds" style="padding:0 14px 10px"></div>' : '';
   return `<section class="card" data-sec="${sec}">
     <div class="card-h">
       <div class="card-t"><span class="swatch" style="background:var(${meta.color})"></span>${esc(meta.title)}
@@ -181,10 +227,11 @@ function cardHtml(sec, month) {
 function renderMonth() {
   const m = doc.months[tab];
   $('#view').innerHTML = `
-    <div class="kpis">
+    <div class="kpis"><div class="kpis-main">
       <div class="kpi"><div class="k">Income </div><input class="v" id="income" inputmode="decimal" value="${esc(amtShow(m.income))}" placeholder="0.00" aria-label="Income"></div>
       <div class="kpi"><div class="k">Allocated </div><div class="v" data-k="allocated"></div></div>
       <div class="kpi"><div class="k">Percentage spent </div><div class="v" data-k="allocatedPct"></div></div>
+      </div>
       <div class="kpi"><div class="k">Amount remaining </div><div class="v" data-k="remaining"></div></div>
     </div>
     <div class="month-grid">
@@ -248,11 +295,21 @@ function chartTheme() {
   Chart.defaults.color = cssVar('--text-2');
   Chart.defaults.borderColor = cssVar('--line');
 }
-const tooltip = (label) => ({
-  backgroundColor: cssVar('--tooltip-bg'), titleColor: cssVar('--tooltip-fg'), bodyColor: cssVar('--tooltip-fg'),
-  cornerRadius: 4, padding: 8, boxPadding: 4, usePointStyle: true,
-  callbacks: { label },
-});
+// Chart hover tooltips are Material 3 rich tooltips: surface container, elevation, subhead plus supporting text.
+const chartTip = Object.assign(document.createElement('div'), { id: 'chartTip', role: 'tooltip' });
+document.body.append(chartTip);
+function externalTip({ chart, tooltip: t }) {
+  if (t.opacity === 0) { chartTip.classList.remove('on'); return; }
+  const rows = (t.body || []).flatMap((b, i) => b.lines.map((text) => ({ text, color: t.labelColors?.[i]?.backgroundColor })));
+  chartTip.innerHTML = `${t.title?.length ? `<div class="tip-h">${esc(t.title.join(' '))}</div>` : ''}`
+    + rows.map((r) => `<div class="tip-r">${r.color ? `<span class="swatch" style="background:${typeof r.color === 'string' ? r.color : ''}"></span>` : ''}<span>${esc(r.text.trim())}</span></div>`).join('');
+  const box = chart.canvas.getBoundingClientRect(); const w = chartTip.offsetWidth; const h = chartTip.offsetHeight;
+  const x = box.left + t.caretX; const y = box.top + t.caretY;
+  chartTip.style.left = `${Math.max(8, Math.min(innerWidth - w - 8, x + 12 + w > innerWidth - 8 ? x - w - 12 : x + 12))}px`;
+  chartTip.style.top = `${Math.max(8, Math.min(innerHeight - h - 8, y - h / 2))}px`;
+  chartTip.classList.add('on');
+}
+const tooltip = (label) => ({ enabled: false, external: externalTip, callbacks: { label } });
 
 const centerText = {
   id: 'centerText',
@@ -340,11 +397,11 @@ function renderSummary() {
   const s = calcSummary(doc);
   const cols = [
     ['Total income', s.totalIncome], ['Total Wants', s.totalWants], ['Total Needs', s.totalNeeds],
-    ['Total Savings', s.totalSavings], ['Bank/Fidelity Savings', s.bankSavings],
+    ['Total Savings', s.totalSavings], ['Cash', s.cashSavings], ['Investing', s.investingSavings],
     ['Roth', s.roth, doc.settings.limitRoth], ['HSA', s.hsa, doc.settings.limitHsa], ['401k', s.k401, doc.settings.limit401k],
   ];
   const rows = s.months.map((c, i) => `<tr data-goto="${i}" style="cursor:pointer">
-      <td>${MONTHS[i]}</td><td>${c.hasIncome ? fmt(c.income) : '—'}</td>
+      <td>${monthLabel(i)}</td><td>${c.hasIncome ? fmt(c.income) : '—'}</td>
       <td>${fmt(c.wantsTotal)}</td><td class="${c.wantsPct > 1 ? 'over' : ''}">${pct(c.wantsPct)}</td>
       <td>${fmt(c.needsTotal)}</td><td class="${c.needsPct > 1 ? 'over' : ''}">${pct(c.needsPct)}</td>
       <td>${fmt(c.savingsTotal)}</td><td>${pct(c.savingsPct)}</td>
@@ -365,9 +422,8 @@ function renderSummary() {
         <div class="chart-box tall"><canvas id="pie" role="img" aria-label="Year breakdown chart"></canvas></div>
         <div class="legend" id="pieLegend"></div>
       </section>
-      <section class="card chart-card">
+      <section class="card chart-card fill">
         <h3>Spending by month</h3>
-        <div class="sub">Wants, Needs and Savings stacked. The line is income.</div>
         <div class="chart-box tall"><canvas id="monthly" role="img" aria-label="Spending by month chart"></canvas></div>
       </section>
     </div>
@@ -382,7 +438,7 @@ function renderSummary() {
   chartTheme();
   const pieParts = [
     ['Total Wants', s.totalWants, cssVar('--wants')], ['Total Needs', s.totalNeeds, cssVar('--needs')],
-    ['Retirement/HSA', s.retirementHsa, cssVar('--savings')], ['Bank/Fidelity Savings', s.bankSavings, cssVar('--bank')],
+    ['Total Savings', s.totalSavings, cssVar('--savings')],
   ];
   const pieTotal = pieParts.reduce((t, p) => t + Math.max(0, p[1]), 0);
   charts.pie = new Chart($('#pie'), {
@@ -392,24 +448,24 @@ function renderSummary() {
   });
   $('#pieLegend').innerHTML = pieParts.map(([l, v, col]) => `<div><span class="swatch" style="background:${col}"></span><span>${l}</span><span>${usd(v)}</span><span class="pct">${pieTotal ? pct(Math.max(0, v) / pieTotal) : '—'}</span></div>`).join('');
 
-  const bar = (label, key, color) => ({ type: 'bar', label, data: s.months.map((c) => Math.max(0, c[key])), backgroundColor: color, stack: 's', borderColor: cssVar('--surface'), borderWidth: { top: 2 }, borderRadius: 3, borderSkipped: 'start' });
+  const bar = (label, key, color) => ({ type: 'bar', label, data: s.months.map((c) => Math.max(0, c[key])), backgroundColor: color, stack: 's', borderColor: cssVar('--surface'), borderWidth: { top: 2 }, borderRadius: 3, borderSkipped: 'start', barPercentage: 0.7, categoryPercentage: 0.8 });
   charts.monthly = new Chart($('#monthly'), {
     data: {
-      labels: MONTHS,
+      labels: monthLabels(),
       datasets: [
         { type: 'line', label: 'Income', data: s.months.map((c) => (c.hasIncome ? c.income : null)), borderColor: cssVar('--text-2'), borderWidth: 2, borderDash: [5, 4], pointRadius: 4, pointBackgroundColor: cssVar('--surface'), pointBorderWidth: 2, spanGaps: false, order: 0 },
         bar('Wants', 'wantsTotal', cssVar('--wants')), bar('Needs', 'needsTotal', cssVar('--needs')), bar('Savings', 'savingsTotal', cssVar('--savings')),
       ],
     },
     options: {
-      maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+      maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, layout: { padding: { top: 8, right: 8, bottom: 8 } },
       plugins: {
-        legend: { position: 'top', align: 'start', labels: { usePointStyle: true, pointStyle: 'rectRounded', boxWidth: 10, boxHeight: 10 } },
+        legend: { position: 'top', align: 'start', labels: { usePointStyle: true, pointStyle: 'rectRounded', boxWidth: 12, boxHeight: 12, padding: 24 } },
         tooltip: tooltip((ctx) => ` ${ctx.dataset.label}: ${usd(ctx.raw)}`),
       },
       scales: {
-        x: { stacked: true, grid: { display: false }, border: { display: false } },
-        y: { stacked: true, beginAtZero: true, grid: { color: cssVar('--line') }, border: { display: false }, ticks: { callback: (v) => `$${Number(v).toLocaleString('en-US')}` } },
+        x: { stacked: true, grid: { display: false }, border: { display: false }, ticks: { padding: 8 } },
+        y: { stacked: true, beginAtZero: true, grid: { color: cssVar('--line') }, border: { display: false }, ticks: { padding: 12, callback: (v) => `$${Number(v).toLocaleString('en-US')}` } },
       },
     },
   });
@@ -496,7 +552,7 @@ view.addEventListener('click', async (e) => {
   if (t.dataset.act === 'sec-add' || t.dataset.act === 'sec-rename') {
     const sec = t.dataset.act === 'sec-rename' ? doc.months[tab].sections.find((s) => s.key === t.dataset.key) : null;
     listEditing = sec;
-    $('#listDlgTitle').textContent = sec ? `Edit list (${MONTHS[tab]})` : `New summation list (${MONTHS[tab]})`;
+    $('#listDlgTitle').textContent = sec ? `Edit list (${monthLabel(tab)})` : `New summation list (${monthLabel(tab)})`;
     const f = $('#listForm'); f.elements.title.value = sec?.title ?? ''; f.elements.group.value = sec?.group ?? 'needs';
     $('#listDlg').showModal(); f.elements.title.focus(); return;
   }
@@ -611,7 +667,7 @@ $('#listForm').addEventListener('submit', (e) => {
   const title = f.elements.title.value.trim().slice(0, 60); const group = f.elements.group.value;
   if (!title) return;
   if (sumLists().some((l) => l.key !== listEditing?.key && l.title.toLowerCase() === title.toLowerCase())) {
-    e.preventDefault(); askDialog({ title: 'Name already used', text: `${MONTHS[tab]} already has a list named “${title}”. Choose a different name.`, cancel: null }); return;
+    e.preventDefault(); askDialog({ title: 'Name already used', text: `${monthLabel(tab)} already has a list named “${title}”. Choose a different name.`, cancel: null }); return;
   }
   if (listEditing) {
     if (listEditing.group !== group) { // rows in the old column can no longer link to it
@@ -628,7 +684,7 @@ function openImport() {
   $('#importGo').disabled = false;
   $('#importDlg').showModal();
 }
-$('#importBtn').addEventListener('click', openImport);
+$('#importBtn').addEventListener('click', () => { $('#settingsDlg').close(); openImport(); });
 $('#importForm').addEventListener('submit', async (e) => {
   if (e.submitter?.value === 'cancel') return;
   e.preventDefault();
@@ -670,6 +726,47 @@ $('#newForm').addEventListener('submit', async (e) => {
   } catch (err) { askDialog({ title: err.status === 409 ? `${y} already exists` : 'Could not create the year', text: err.status === 409 ? 'Pick a different year, or select it from the year menu.' : err.message, cancel: null }); }
 });
 
+/* M3-style seed picker: preset chips plus a custom color built from HCT hue and chroma sliders. */
+let draftSeed = null;
+const hueTrack = () => `linear-gradient(90deg, ${Array.from({ length: 13 }, (_, i) => hexFromArgb(Hct.from(i * 30, 60, 60).toInt())).join(', ')})`;
+function renderSeedPicker() {
+  const chip = (seed, label) => `<button type="button" class="seed${(draftSeed || null) === seed ? ' on' : ''}" data-seed="${seed || ''}" aria-label="${label}" aria-pressed="${(draftSeed || null) === seed}" style="--c:${seed || '#415f91'}">${seed ? '' : '<span>A</span>'}</button>`;
+  const custom = draftSeed && !SEED_PRESETS.includes(draftSeed);
+  $('#seedChips').innerHTML = chip(null, 'Default') + SEED_PRESETS.map((c) => chip(c, c)).join('')
+    + `<button type="button" class="seed custom${custom ? ' on' : ''}" data-seed="custom" aria-label="Custom color" aria-pressed="${!!custom}" style="--c:${custom ? draftSeed : 'transparent'}">+</button>`;
+  $('#seedCustom').hidden = !seedPanelOpen;
+}
+let seedPanelOpen = false;
+function syncSeedSliders() {
+  const h = Hct.fromInt(argbFromHex(draftSeed || '#415f91'));
+  const f = $('#settingsForm');
+  f.seedHue.value = Math.round(h.hue); f.seedChroma.value = Math.round(h.chroma); f.seedHex.value = hexFromArgb(h.toInt());
+  f.seedChroma.style.setProperty('--track', `linear-gradient(90deg, ${hexFromArgb(Hct.from(h.hue, 0, 50).toInt())}, ${hexFromArgb(Hct.from(h.hue, 100, 50).toInt())})`);
+}
+function previewDraft() { const f = $('#settingsForm'); applyPrefs({ ...prefs, theme: f.theme.value, density: f.density.value, seed: draftSeed }); }
+$('#seedChips').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-seed]'); if (!b) return;
+  if (b.dataset.seed === 'custom') { seedPanelOpen = !seedPanelOpen; if (!draftSeed) draftSeed = '#415f91'; syncSeedSliders(); } else { draftSeed = b.dataset.seed || null; seedPanelOpen = false; }
+  renderSeedPicker(); previewDraft();
+});
+$('#seedCustom').addEventListener('input', (e) => {
+  const f = $('#settingsForm');
+  if (e.target === f.seedHex) {
+    if (!/^#[0-9a-f]{6}$/i.test(f.seedHex.value)) return;
+    draftSeed = f.seedHex.value.toLowerCase();
+  } else {
+    draftSeed = hexFromArgb(Hct.from(Number(f.seedHue.value), Number(f.seedChroma.value), 40).toInt());
+  }
+  if (e.target !== f.seedHex) f.seedHex.value = draftSeed;
+  f.seedChroma.style.setProperty('--track', `linear-gradient(90deg, ${hexFromArgb(Hct.from(Number(f.seedHue.value), 0, 50).toInt())}, ${hexFromArgb(Hct.from(Number(f.seedHue.value), 100, 50).toInt())})`);
+  $('#seedChips .custom').style.setProperty('--c', draftSeed); $('#seedChips .custom').classList.add('on');
+  $('#seedChips').querySelectorAll('.seed:not(.custom)').forEach((b) => b.classList.remove('on'));
+  previewDraft();
+});
+$('#settingsForm').theme.addEventListener('change', previewDraft);
+$('#settingsForm').density.addEventListener('change', previewDraft);
+// Cancel, Escape or Save: drop the live preview and use the saved preferences.
+$('#settingsDlg').addEventListener('close', () => { applyPrefs(); });
 $('#settingsBtn').addEventListener('click', () => {
   const f = $('#settingsForm'); const s = doc.settings;
   $('#setYearLbl').textContent = doc.year;
@@ -679,6 +776,9 @@ $('#settingsBtn').addEventListener('click', () => {
   f.needsExtra.value = s.needsExtra; f.rothStart.value = s.rothStart;
   f.limit401k.value = s.limit401k || 0; f.limitHsa.value = s.limitHsa || 0; f.limitRoth.value = s.limitRoth || 0;
   $('#backupLink').href = `/api/years/${doc.year}/backup.json`;
+  f.theme.value = prefs.theme; f.density.value = prefs.density; f.monthStyle.value = prefs.monthStyle;
+  draftSeed = prefs.seed; seedPanelOpen = false; $('#seedCustom').querySelector('input[type=range]').style.setProperty('--track', hueTrack());
+  renderSeedPicker();
   $('#settingsDlg').showModal();
 });
 $('#settingsForm').addEventListener('submit', (e) => {
@@ -694,6 +794,8 @@ $('#settingsForm').addEventListener('submit', (e) => {
     limit401k: Math.max(0, num(f.limit401k.value, s.limit401k || 0)), limitHsa: Math.max(0, num(f.limitHsa.value, s.limitHsa || 0)),
     limitRoth: Math.max(0, num(f.limitRoth.value, s.limitRoth || 0)),
   };
+  prefs = { theme: f.theme.value, density: f.density.value, monthStyle: f.monthStyle.value, seed: draftSeed };
+  store.set('ledgy.prefs', JSON.stringify(prefs)); applyPrefs();
   scheduleSave(); render();
 });
 $('#deleteYearBtn').addEventListener('click', async () => {
@@ -704,8 +806,40 @@ $('#deleteYearBtn').addEventListener('click', async () => {
   await loadYears();
 });
 
-matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => doc && render());
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { applyPrefs(); if (doc) render(); });
 // Charts draw text on canvas, so redraw once the web font is ready.
 document.fonts?.ready.then(() => doc && render());
+
+/* ---------- Plain tooltips (Material 3): replace native title tooltips ---------- */
+const tipEl = Object.assign(document.createElement('div'), { id: 'tip', role: 'tooltip' });
+document.body.append(tipEl);
+let tipTimer = null; let tipFor = null;
+function hideTip() { clearTimeout(tipTimer); tipEl.classList.remove('on'); tipFor = null; }
+function showTip(el) {
+  const text = el.getAttribute('title') || el.dataset.tip;
+  if (el.hasAttribute('title')) { // Take over from the browser tooltip and keep the text for assistive tech
+    el.dataset.tip = text; el.removeAttribute('title');
+    if (!el.getAttribute('aria-label') && !el.textContent.trim()) el.setAttribute('aria-label', text); else el.setAttribute('aria-description', text);
+  }
+  if (!el.dataset.tip) return;
+  tipEl.textContent = el.dataset.tip; tipFor = el;
+  const r = el.getBoundingClientRect(); const t = tipEl.getBoundingClientRect();
+  const below = r.bottom + 8 + t.height < innerHeight;
+  tipEl.style.top = `${below ? r.bottom + 8 : r.top - 8 - t.height}px`;
+  tipEl.style.left = `${Math.max(8, Math.min(innerWidth - t.width - 8, r.left + r.width / 2 - t.width / 2))}px`;
+  tipEl.classList.add('on');
+}
+const tipTarget = (e) => e.target.closest?.('[title]:not([title=""]), [data-tip]');
+document.addEventListener('pointerover', (e) => {
+  const el = tipTarget(e); if (!el || el === tipFor) return;
+  hideTip();
+  tipTimer = setTimeout(() => showTip(el), 500);
+});
+document.addEventListener('pointerout', (e) => { if (tipTarget(e)) hideTip(); });
+document.addEventListener('focusin', (e) => { const el = tipTarget(e); if (el && el.matches(':focus-visible') && el.tagName !== 'INPUT') { hideTip(); showTip(el); } });
+document.addEventListener('focusout', hideTip);
+document.addEventListener('pointerdown', hideTip);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideTip(); });
+addEventListener('scroll', hideTip, true);
 
 loadYears().catch((e) => { $('#view').innerHTML = `<div class="empty"><h1>Cannot reach the server</h1><p class="muted">${esc(e.message)}</p></div>`; });

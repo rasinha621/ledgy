@@ -24,8 +24,6 @@
     <div class="actions">
       <span id="saveState" class="save-state" aria-live="polite"></span>
       <button id="newYearBtn" class="btn ghost">New year</button>
-      <button id="importBtn" class="btn ghost" title="Import an .xlsx file">Import</button>
-      <a id="exportBtn" class="btn ghost" href="#" download title="Download as .xlsx with formulas">Export</a>
       <button id="settingsBtn" class="btn ghost" aria-label="Settings">Settings</button>
     </div>
   </header>
@@ -111,7 +109,31 @@
           <label class="tf"><input type="number" step="any" min="0" name="limitRoth" placeholder=" "><span>Roth limit $</span></label>
         </div>
       </fieldset>
-      <p class="muted"><a id="backupLink" href="#" download>Download JSON backup</a></p>
+      <fieldset>
+        <legend>Data</legend>
+        <div class="data-actions">
+          <button type="button" id="importBtn" class="btn" title="Import an .xlsx file">Import</button>
+          <a id="exportBtn" class="btn" href="#" download title="Download as .xlsx with formulas">Export</a>
+          <a id="backupLink" class="btn" href="#" download title="Download this year as JSON">JSON backup</a>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Preferences (this browser)</legend>
+        <div class="grid3">
+          <label class="tf sel"><select name="theme"><option value="auto">Auto</option><option value="light">Light</option><option value="dark">Dark</option></select><span>Theme</span></label>
+          <label class="tf sel"><select name="monthStyle"><option value="upper">JAN</option><option value="title">Jan</option><option value="num">01</option><option value="full">January</option></select><span>Month style</span></label>
+          <label class="tf sel"><select name="density"><option value="normal">Normal</option><option value="compact">Compact</option></select><span>Density</span></label>
+        </div>
+        <div class="seed-group">
+          <div class="muted">Theme color</div>
+          <div id="seedChips" class="seeds"></div>
+          <div id="seedCustom" class="seed-custom" hidden>
+            <label class="slider"><span>Hue</span><input type="range" name="seedHue" min="0" max="360" step="1"></label>
+            <label class="slider"><span>Chroma</span><input type="range" name="seedChroma" min="0" max="120" step="1"></label>
+            <label class="tf"><input name="seedHex" maxlength="7" autocomplete="off" placeholder=" "><span>Hex</span></label>
+          </div>
+        </div>
+      </fieldset>
       <div class="dlg-actions">
         <button type="button" id="deleteYearBtn" class="btn danger">Delete year</button>
         <span class="spacer"></span>

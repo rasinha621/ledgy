@@ -19,21 +19,22 @@ const cmp = (where, got, want) => {
 };
 const map = { B1: 'wantsBudget', C1: 'wantsTotal', C2: 'wantsPct', F1: 'needsBudget', G1: 'needsTotal', G2: 'needsPct',
   J1: 'savingsBudget', K1: 'savingsTotal', K2: 'savingsPct', M2: 'allocated', M3: 'allocatedPct', N3: 'remaining' };
-const check = async (book, d, label) => {
+const check = async (book, d, label, keys) => {
   MONTHS.forEach((m, i) => {
     const ws = book.getWorksheet(m); const c = calcMonth(d.months[i], d.settings);
     for (const [a, k] of Object.entries(map)) cmp(`${label} ${m}!${a}`, c[k], cached(ws, a));
     cmp(`${label} ${m}!E7`, c.groceriesTotal, cached(ws, 'E7'));
   });
   const s = calcSummary(d); const ws = book.getWorksheet('Summary');
-  ['totalIncome','totalWants','totalNeeds','retirementHsa','bankSavings','roth','hsa','k401'].forEach((k, i) =>
+  keys.forEach((k, i) =>
     cmp(`${label} Summary!${String.fromCharCode(65 + i)}2`, s[k], cached(ws, `${String.fromCharCode(65 + i)}2`)));
 };
-await check(wb, doc, 'import');
+// The source workbook has one bank column; the app splits it into Cash and Investing.
+await check(wb, doc, 'import', ['totalIncome','totalWants','totalNeeds','totalSavings','cashSavings','roth','hsa','k401']);
 // Round trip: export, import again, compare to the original cached values.
 const out = await exportWorkbook(doc);
 const again = await importWorkbook(Buffer.from(out), 2026);
-await check(wb, again.doc, 'roundtrip');
+await check(wb, again.doc, 'roundtrip', ['totalIncome','totalWants','totalNeeds','totalSavings','cashSavings','investingSavings','roth','hsa','k401']);
 console.log('settings', doc.settings);
 console.log('warnings', warnings);
 console.log(`${checked} checks, ${bad} mismatches`);

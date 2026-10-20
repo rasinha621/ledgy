@@ -45,15 +45,15 @@ Each month has the same cells as the sheet. The small labels (M1, N3, A2…) sho
 | `J1 = M1*0.2`, `K1 = SUM(I:I)`, `K2 = K1/J1` | Savings: budget, total, % used |
 | `M2 = SUM(C1,G1,K1)`, `M3 = M2/M1`, `N3 = M1-M2` | Allocated, Allocated / income, Remaining |
 | `Q` / `S` columns | Groceries and Transit lists (with notes from R and T) |
-| Summary `A2:H2` | Summary page: same 8 totals and same formulas |
+| Summary `A2:I2` | Summary page: same 9 totals and same formulas |
 | Summary pie chart (`B2:E2`) | "Year breakdown" chart on the Summary page |
 
 The Summary reads Savings rows by position, as the spreadsheet does: row 1 = 401k (`I2`), row 2 = HSA (`I3`),
-row 3 = Roth (`I4`), row 4 = bank savings (`I5`).
+row 3 = Roth (`I4`), row 4 = Cash (`I5`), row 5 = Investing (`I6`). The original spreadsheet had one bank savings row; existing years are upgraded to Cash plus an empty Investing row.
 
 Spreadsheet behavior that is kept by default (change it in **Settings**):
 - HSA and 401k totals add JAN–NOV only (DEC is not in the formula).
-- "Retirement/HSA" is `SUM(K1)`, so it also includes bank savings. The pie chart counts bank savings two times.
+- The pie chart on the Summary page shows Wants, Needs and Total Savings (Cash and Investing included).
 - Roth total starts from a fixed balance (`4808.49` in the imported file).
 - The budget percentages and the +$200 for Needs.
 
