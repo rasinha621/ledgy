@@ -3,6 +3,8 @@
 # For a real domain name (Let's Encrypt), replace "tls internal" with your DNS provider's setup.
 {
 	auto_https disable_redirects
+	# Browsers send no server name when you open an IP address. Use this one, or the handshake fails.
+	default_sni {$LEDGY_HOST:localhost}
 }
 
 https://{$LEDGY_HOST:localhost}:8443 {
