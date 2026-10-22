@@ -1,0 +1,13 @@
+# HTTPS in front of Ledgy. "tls internal" makes Caddy sign the certificate with its own certificate
+# authority, so no domain name or internet access is needed. See "HTTPS" in the README to trust it.
+# For a real domain name (Let's Encrypt), replace "tls internal" with your DNS provider's setup.
+{
+	auto_https disable_redirects
+}
+
+https://{$LEDGY_HOST:localhost}:8443 {
+	tls internal
+	encode gzip
+	header Strict-Transport-Security "max-age=31536000"
+	reverse_proxy ledgy:3000
+}

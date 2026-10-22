@@ -12,6 +12,15 @@ const PORT = Number(process.env.PORT || 3000);
 const DATA_DIR = process.env.DATA_DIR || path.join(here, 'data');
 const AUTH_USER = process.env.BASIC_AUTH_USER || '';
 const AUTH_PASS = process.env.BASIC_AUTH_PASS || '';
+const AUTH = Boolean(AUTH_USER && AUTH_PASS);
+const ALLOW_NO_AUTH = process.env.ALLOW_NO_AUTH === '1';
+const ALLOWED_HOSTS = (process.env.ALLOWED_HOSTS || '').split(',').map((h) => h.trim().toLowerCase()).filter(Boolean);
+const TRUST_PROXY = process.env.TRUST_PROXY || '';
+
+if (!AUTH && !ALLOW_NO_AUTH) {
+  console.error('Ledgy: set BASIC_AUTH_USER and BASIC_AUTH_PASS, or set ALLOW_NO_AUTH=1 to run without a login.');
+  process.exit(1);
+}
 
 mkdirSync(DATA_DIR, { recursive: true });
 // Older versions named the file budget.db. Rename it once, with its WAL files.
@@ -40,19 +49,64 @@ const saveYear = (y, doc) => {
 
 const app = express();
 app.disable('x-powered-by');
+// Behind a reverse proxy, TRUST_PROXY makes req.ip the client address (used by the login limit). "1" = one proxy hop.
+if (TRUST_PROXY) app.set('trust proxy', /^\d+$/.test(TRUST_PROXY) ? Number(TRUST_PROXY) : TRUST_PROXY === 'true' || TRUST_PROXY);
+
+app.use((_req, res, next) => {
+  res.set({
+    'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; "
+      + "font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'Referrer-Policy': 'no-referrer',
+    'Cross-Origin-Opener-Policy': 'same-origin',
+    'Cross-Origin-Resource-Policy': 'same-origin',
+    'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+  });
+  next();
+});
 app.get('/healthz', (_req, res) => res.send('ok'));
 
-if (AUTH_USER && AUTH_PASS) {
-  const same = (a, b) => { const x = Buffer.from(a); const y = Buffer.from(b); return x.length === y.length && timingSafeEqual(x, y); };
+// Block DNS rebinding: another site's domain pointed at this server. Without a login, only IP addresses,
+// localhost and ALLOWED_HOSTS are accepted. With ALLOWED_HOSTS set, only those names (plus localhost) are.
+const ipOrLocal = (h) => h === 'localhost' || /^\d{1,3}(\.\d{1,3}){3}$/.test(h) || /^\[[0-9a-f:.]+\]$/.test(h);
+if (ALLOWED_HOSTS.length || !AUTH) {
   app.use((req, res, next) => {
+    const host = (req.hostname || '').toLowerCase();
+    if (ALLOWED_HOSTS.includes(host) || host === 'localhost' || (!ALLOWED_HOSTS.length && ipOrLocal(host))) return next();
+    res.status(421).send(`Host "${host}" is not allowed. Add it to ALLOWED_HOSTS.`);
+  });
+}
+
+if (AUTH) {
+  const same = (a, b) => { const x = Buffer.from(a); const y = Buffer.from(b); return x.length === y.length && timingSafeEqual(x, y); };
+  // Lock an address out for 15 minutes after 10 wrong passwords.
+  const MAX_FAILS = 10; const LOCK_MS = 15 * 60 * 1000;
+  const fails = new Map(); // ip -> { n, reset }
+  app.use((req, res, next) => {
+    const now = Date.now();
+    let f = fails.get(req.ip);
+    if (f && now > f.reset) { fails.delete(req.ip); f = null; }
+    if (f && f.n >= MAX_FAILS) return res.set('Retry-After', String(Math.ceil((f.reset - now) / 1000))).status(429).send('Too many failed logins. Try again later.');
     const [type, token] = (req.headers.authorization || '').split(' ');
     if (type === 'Basic' && token) {
       const [u, ...p] = Buffer.from(token, 'base64').toString().split(':');
-      if (same(u, AUTH_USER) && same(p.join(':'), AUTH_PASS)) return next();
+      if (same(u, AUTH_USER) && same(p.join(':'), AUTH_PASS)) { fails.delete(req.ip); return next(); }
+      if (fails.size > 10000) for (const [ip, v] of fails) if (now > v.reset) fails.delete(ip);
+      fails.set(req.ip, { n: (f?.n || 0) + 1, reset: f?.reset || now + LOCK_MS });
     }
     res.set('WWW-Authenticate', 'Basic realm="Ledgy"').status(401).send('Authentication required');
   });
 }
+
+// Block cross-site requests (CSRF). The app sends X-Ledgy on every change; another site cannot add
+// that header without a CORS preflight, which this server never allows.
+app.use((req, res, next) => {
+  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
+  const site = req.get('sec-fetch-site');
+  if (req.get('x-ledgy') === '1' && (!site || site === 'same-origin')) return next();
+  res.status(403).json({ error: 'Cross-site request blocked.' });
+});
 
 app.use(express.json({ limit: '5mb' }));
 app.use('/lib', express.static(path.join(here, 'lib')));
@@ -109,7 +163,7 @@ app.delete('/api/years/:year', (req, res) => {
   res.status(204).end();
 });
 
-app.post('/api/years/:year/import', express.raw({ type: '*/*', limit: '20mb' }), async (req, res) => {
+app.post('/api/years/:year/import', express.raw({ type: 'application/octet-stream', limit: '5mb' }), async (req, res) => {
   const y = yearParam(req, res); if (y === null) return;
   if (getYear(y) && req.query.overwrite !== '1') return res.status(409).json({ error: 'Year exists' });
   try {
@@ -124,10 +178,15 @@ app.get('/api/years/:year/export.xlsx', async (req, res) => {
   const y = yearParam(req, res); if (y === null) return;
   const doc = getYear(y);
   if (!doc) return res.status(404).json({ error: 'Not found' });
-  const buf = await exportWorkbook(doc);
-  res.set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-  res.set('Content-Disposition', `attachment; filename="ledgy-${y}.xlsx"`);
-  res.send(Buffer.from(buf));
+  try {
+    const buf = await exportWorkbook(doc);
+    res.set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.set('Content-Disposition', `attachment; filename="ledgy-${y}.xlsx"`);
+    res.send(Buffer.from(buf));
+  } catch (e) {
+    console.error(`Export of ${y} failed:`, e);
+    res.status(500).json({ error: 'Could not create the file.' });
+  }
 });
 
 app.get('/api/years/:year/backup.json', (req, res) => {
