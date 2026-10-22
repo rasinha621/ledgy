@@ -90,7 +90,7 @@ const charts = {};
 
 /* ---------- API and saving ---------- */
 async function api(path, opts = {}) {
-  const res = await fetch(path, { headers: { 'Content-Type': 'application/json' }, ...opts });
+  const res = await fetch(path, { headers: { 'Content-Type': 'application/json', 'X-Ledgy': '1' }, ...opts });
   const body = res.status === 204 ? null : await res.json().catch(() => null);
   if (!res.ok) { const e = new Error(body?.error || res.statusText); e.status = res.status; throw e; }
   return body;
@@ -124,6 +124,22 @@ function showBanner(html) { const b = $('#banner'); b.innerHTML = html; b.hidden
 document.addEventListener('click', (e) => { if (e.target.id === 'reloadBtn') location.reload(); });
 
 /* ---------- Amount input: numbers, $ and commas, or =1+2 ---------- */
+// + - * / and parentheses. A small parser instead of eval, so the page runs under a strict CSP.
+function arith(s) {
+  let i = 0;
+  const fail = () => { throw new Error('bad expression'); };
+  const num = () => { const m = /^(\d+\.?\d*|\.\d+)/.exec(s.slice(i)); if (!m) fail(); i += m[0].length; return Number(m[0]); };
+  const factor = () => {
+    if (s[i] === '+' || s[i] === '-') { const neg = s[i++] === '-'; const v = factor(); return neg ? -v : v; }
+    if (s[i] === '(') { i++; const v = expr(); if (s[i++] !== ')') fail(); return v; }
+    return num();
+  };
+  const term = () => { let v = factor(); while (s[i] === '*' || s[i] === '/') v = s[i++] === '*' ? v * factor() : v / factor(); return v; };
+  const expr = () => { let v = term(); while (s[i] === '+' || s[i] === '-') v = s[i++] === '+' ? v + term() : v - term(); return v; };
+  const v = expr();
+  if (i !== s.length) fail();
+  return v;
+}
 function parseAmount(raw) {
   let s = String(raw).trim().replace(/[$,\s]/g, '');
   if (!s) return { ok: true, v: null };
@@ -131,7 +147,7 @@ function parseAmount(raw) {
   if (s.startsWith('=')) s = s.slice(1);
   if (!/^[-+*/().\d]+$/.test(s)) return { ok: false };
   try {
-    const v = Function(`"use strict";return (${s})`)();
+    const v = arith(s);
     return Number.isFinite(v) ? { ok: true, v: Math.round(v * 1e10) / 1e10 } : { ok: false };
   } catch { return { ok: false }; }
 }
@@ -691,7 +707,7 @@ $('#importForm').addEventListener('submit', async (e) => {
   const file = $('#importFile').files[0]; const y = Number($('#importYear').value);
   if (!file || !y) return;
   const msg = $('#importMsg'); msg.textContent = 'Importing…'; $('#importGo').disabled = true;
-  const send = (overwrite) => fetch(`/api/years/${y}/import${overwrite ? '?overwrite=1' : ''}`, { method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: file });
+  const send = (overwrite) => fetch(`/api/years/${y}/import${overwrite ? '?overwrite=1' : ''}`, { method: 'POST', headers: { 'Content-Type': 'application/octet-stream', 'X-Ledgy': '1' }, body: file });
   try {
     await flush();
     let res = await send(false);
