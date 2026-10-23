@@ -1,7 +1,7 @@
 import express from 'express';
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync, existsSync, renameSync } from 'node:fs';
-import { timingSafeEqual } from 'node:crypto';
+import { timingSafeEqual, createHash, createHmac } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { emptyYear, emptyMonth, normalizeYear } from './lib/calc.js';
@@ -83,19 +83,65 @@ if (AUTH) {
   // Lock an address out for 15 minutes after 10 wrong passwords.
   const MAX_FAILS = 10; const LOCK_MS = 15 * 60 * 1000;
   const fails = new Map(); // ip -> { n, reset }
-  app.use((req, res, next) => {
-    const now = Date.now();
-    let f = fails.get(req.ip);
-    if (f && now > f.reset) { fails.delete(req.ip); f = null; }
-    if (f && f.n >= MAX_FAILS) return res.set('Retry-After', String(Math.ceil((f.reset - now) / 1000))).status(429).send('Too many failed logins. Try again later.');
+  const locked = (ip, now) => {
+    const f = fails.get(ip);
+    if (f && now > f.reset) { fails.delete(ip); return null; }
+    return f && f.n >= MAX_FAILS ? f : null;
+  };
+  const fail = (ip, now) => {
+    if (fails.size > 10000) for (const [k, v] of fails) if (now > v.reset) fails.delete(k);
+    const f = fails.get(ip);
+    fails.set(ip, { n: (f?.n || 0) + 1, reset: f?.reset || now + LOCK_MS });
+  };
+  const checkLogin = (u, p) => { const a = same(String(u), AUTH_USER); const b = same(String(p), AUTH_PASS); return a && b; };
+
+  // The login page sets a signed cookie. The key comes from the login, so changing the password signs everyone out.
+  const SESSION_MS = 30 * 24 * 3600 * 1000;
+  const KEY = createHash('sha256').update(`ledgy-session\0${AUTH_USER}\0${AUTH_PASS}`).digest();
+  const sign = (exp) => createHmac('sha256', KEY).update(String(exp)).digest('base64url');
+  const cookie = (req, value, maxAge) => `ledgy_session=${value}; Max-Age=${maxAge}; Path=/; HttpOnly; SameSite=Strict${req.secure ? '; Secure' : ''}`;
+  const hasSession = (req) => {
+    const m = /(?:^|;\s*)ledgy_session=(\d+)\.([\w-]+)/.exec(req.headers.cookie || '');
+    return Boolean(m) && Number(m[1]) > Date.now() && same(m[2], sign(m[1]));
+  };
+  const hasBasic = (req) => {
     const [type, token] = (req.headers.authorization || '').split(' ');
-    if (type === 'Basic' && token) {
-      const [u, ...p] = Buffer.from(token, 'base64').toString().split(':');
-      if (same(u, AUTH_USER) && same(p.join(':'), AUTH_PASS)) { fails.delete(req.ip); return next(); }
-      if (fails.size > 10000) for (const [ip, v] of fails) if (now > v.reset) fails.delete(ip);
-      fails.set(req.ip, { n: (f?.n || 0) + 1, reset: f?.reset || now + LOCK_MS });
-    }
-    res.set('WWW-Authenticate', 'Basic realm="Ledgy"').status(401).send('Authentication required');
+    if (type !== 'Basic' || !token) return null;
+    const [u, ...p] = Buffer.from(token, 'base64').toString().split(':');
+    return checkLogin(u, p.join(':'));
+  };
+
+  // Only the login page and what it needs are open. Everything else needs a session.
+  const sameSite = (req) => req.get('x-ledgy') === '1' && (!req.get('sec-fetch-site') || req.get('sec-fetch-site') === 'same-origin');
+  const open = ['/styles.css', '/login.js', '/vendor-mcu.js'];
+  app.get(open, express.static(path.join(here, 'public')));
+  app.use('/fonts', express.static(path.join(here, 'public/fonts')));
+  app.get('/login', (req, res) => (hasSession(req) ? res.redirect('/') : res.sendFile(path.join(here, 'public/login.html'))));
+  app.post('/login', express.json({ limit: '1kb' }), (req, res) => {
+    if (!sameSite(req)) return res.status(403).json({ error: 'Cross-site request blocked.' });
+    const now = Date.now(); const f = locked(req.ip, now);
+    if (f) return res.set('Retry-After', String(Math.ceil((f.reset - now) / 1000))).status(429).json({ error: 'Too many failed attempts. Try again later.' });
+    if (!checkLogin(req.body?.username ?? '', req.body?.password ?? '')) { fail(req.ip, now); return res.status(401).json({ error: 'Wrong username or password.' }); }
+    fails.delete(req.ip);
+    const exp = now + SESSION_MS;
+    res.set('Set-Cookie', cookie(req, `${exp}.${sign(exp)}`, SESSION_MS / 1000)).status(204).end();
+  });
+  app.post('/logout', (req, res) => {
+    if (!sameSite(req)) return res.status(403).json({ error: 'Cross-site request blocked.' });
+    res.set('Set-Cookie', cookie(req, '', 0)).status(204).end();
+  });
+  app.get('/api/auth', (req, res) => (hasSession(req) || hasBasic(req) ? res.json({ login: true }) : res.status(401).json({ error: 'Sign in required.' })));
+
+  app.use((req, res, next) => {
+    const now = Date.now(); const f = locked(req.ip, now);
+    if (f) return res.set('Retry-After', String(Math.ceil((f.reset - now) / 1000))).status(429).send('Too many failed logins. Try again later.');
+    if (hasSession(req)) return next();
+    // Scripts can still send a Basic header.
+    const basic = hasBasic(req);
+    if (basic) { fails.delete(req.ip); return next(); }
+    if (basic === false) fail(req.ip, now);
+    if (['GET', 'HEAD'].includes(req.method) && !req.path.startsWith('/api/') && req.accepts(['json', 'html']) === 'html') return res.redirect('/login');
+    res.status(401).json({ error: 'Sign in required.' });
   });
 }
 
