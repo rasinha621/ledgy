@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign in · Ledgy</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23415f91'/><path d='M9 22V14M16 22V9M23 22v-5' stroke='white' stroke-width='3.2' stroke-linecap='round'/></svg>">
+  <meta name="theme-color" content="#f9f9ff" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#111318" media="(prefers-color-scheme: dark)">
+  <link rel="stylesheet" href="/fonts/fonts.css">
+  <link rel="stylesheet" href="/styles.css">
+  <script type="module" src="/login.js"></script>
+</head>
+<body class="login-page">
+  <main class="login-card">
+    <div class="brand"><span class="logo" aria-hidden="true"></span><span>Ledgy</span></div>
+    <h1>Sign in</h1>
+    <p class="muted">Use your Ledgy login to continue.</p>
+    <form id="loginForm" method="post" action="/login">
+      <label class="tf"><input name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required autofocus placeholder=" "><span>Username</span></label>
+      <label class="tf"><input name="password" type="password" autocomplete="current-password" required placeholder=" "><span>Password</span></label>
+      <div id="loginErr" class="login-err" role="alert"></div>
+      <div class="login-actions">
+        <button type="submit" id="loginGo" class="btn primary">Sign in</button>
+      </div>
+    </form>
+  </main>
+</body>
+</html>

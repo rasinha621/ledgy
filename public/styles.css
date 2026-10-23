@@ -466,3 +466,17 @@ dialog.alert .dlg-actions { margin-top: 8px; }
 #chartTip .tip-r { display: flex; align-items: center; gap: 8px; font-variant-numeric: tabular-nums; }
 
 .data-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* Sign-in page: an elevated-surface card centered on the page */
+.login-page { min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding: 16px; }
+.login-card {
+  width: min(400px, 100%); padding: 40px 32px 32px; border-radius: var(--md-sys-shape-xl);
+  background: var(--md-sys-color-surface-container-low); box-shadow: var(--md-sys-elevation-1);
+}
+.login-card .brand { margin-bottom: 24px; }
+.login-card h1 { margin: 0 0 8px; font-size: 24px; line-height: 32px; font-weight: 400; letter-spacing: 0; }
+.login-card p { margin: 0 0 24px; }
+.login-card form { display: grid; gap: 16px; }
+.login-card .tf input:focus + span, .login-card .tf input:not(:placeholder-shown) + span { background: var(--md-sys-color-surface-container-low); }
+.login-err { min-height: 20px; margin: -4px 0 -8px 16px; font-size: 12px; line-height: 16px; letter-spacing: .4px; color: var(--md-sys-color-error); }
+.login-actions { display: flex; justify-content: flex-end; margin-top: 8px; }

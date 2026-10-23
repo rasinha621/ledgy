@@ -91,6 +91,7 @@ const charts = {};
 /* ---------- API and saving ---------- */
 async function api(path, opts = {}) {
   const res = await fetch(path, { headers: { 'Content-Type': 'application/json', 'X-Ledgy': '1' }, ...opts });
+  if (res.status === 401) { location.href = '/login'; throw new Error('Signed out'); }
   const body = res.status === 204 ? null : await res.json().catch(() => null);
   if (!res.ok) { const e = new Error(body?.error || res.statusText); e.status = res.status; throw e; }
   return body;
@@ -782,6 +783,11 @@ $('#seedCustom').addEventListener('input', (e) => {
 $('#settingsForm').theme.addEventListener('change', previewDraft);
 $('#settingsForm').density.addEventListener('change', previewDraft);
 // Cancel, Escape or Save: drop the live preview and use the saved preferences.
+fetch('/api/auth').then((r) => { $('#signOutBtn').hidden = !r.ok; }).catch(() => {});
+$('#signOutBtn').addEventListener('click', async () => {
+  await fetch('/logout', { method: 'POST', headers: { 'X-Ledgy': '1' } }).catch(() => {});
+  location.href = '/login';
+});
 $('#settingsDlg').addEventListener('close', () => { applyPrefs(); });
 $('#settingsBtn').addEventListener('click', () => {
   const f = $('#settingsForm'); const s = doc.settings;

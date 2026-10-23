@@ -28,7 +28,7 @@ docker compose up -d --build
 | `LEDGY_HOST` | `localhost` | The name or IP address you type in the browser, e.g. `nas.local` or `192.168.1.20`. The HTTPS certificate is made for it. |
 | `HTTPS_PORT` | `8443` | The HTTPS port on the server. (TrueNAS already uses 443.) |
 | `PUID` / `PGID` | `568` | The user and group that own the data. 568 is the TrueNAS `apps` user. |
-| `BASIC_AUTH_USER` / `BASIC_AUTH_PASS` | blank | The login. **Required**: the app does not start without them unless `ALLOW_NO_AUTH=1`. After 10 wrong passwords, an address is locked out for 15 minutes. |
+| `BASIC_AUTH_USER` / `BASIC_AUTH_PASS` | blank | The login, shown as a sign-in page (the session lasts 30 days; Settings has Sign out). **Required**: the app does not start without them unless `ALLOW_NO_AUTH=1`. After 10 wrong passwords, an address is locked out for 15 minutes. |
 | `ALLOW_NO_AUTH` | blank | Set to `1` to run without a login (only on a network you trust). The app then accepts only IP addresses and `localhost` in the URL, unless you set `ALLOWED_HOSTS`. |
 | `ALLOWED_HOSTS` | blank | Comma-separated host names that may be used to open the app, e.g. `ledgy.example.com,nas.local`. When set, other names are refused. |
 | `TRUST_PROXY` | `1` in compose | Compose already sets this, because Caddy is in front. Set it only if you run Ledgy without Compose behind your own proxy. |
