@@ -14,6 +14,7 @@ services:
       - BASIC_AUTH_PASS=${BASIC_AUTH_PASS:-}
       - ALLOW_NO_AUTH=${ALLOW_NO_AUTH:-}     # 1 = run without a login (trusted network only)
       - ALLOWED_HOSTS=${ALLOWED_HOSTS:-}     # e.g. ledgy.example.com,nas.local
+      - LEDGY_HOST=${LEDGY_HOST:-localhost}  # Only used in the startup log line
       - TRUST_PROXY=1                        # Caddy is one proxy hop, so the login lockout sees the real client
     volumes:
       - ledgy-data:/data          # Docker names it <stack folder>_ledgy-data

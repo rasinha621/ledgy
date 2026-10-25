@@ -242,4 +242,4 @@ app.get('/api/years/:year/backup.json', (req, res) => {
   res.set('Content-Disposition', `attachment; filename="ledgy-${y}.json"`).json(doc);
 });
 
-app.listen(PORT, () => console.log(`Ledgy on http://0.0.0.0:${PORT} (data: ${DATA_DIR})`));
+app.listen(PORT, () => console.log(`Ledgy on http://${process.env.LEDGY_HOST || 'localhost'}:${PORT} (data: ${DATA_DIR})`));

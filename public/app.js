@@ -284,7 +284,7 @@ function refresh() {
     set(`${s}Total`, fmt(c[`${s}Total`]));
     const p = c[`${s}Pct`];
     const el = $(`[data-k="${s}Pct"]`);
-    if (el) { el.textContent = p === null ? 'Add income to get goal' : `${pct(p)} of budget`; el.classList.toggle('over', s !== 'savings' && p !== null && p > 1); el.classList.toggle('met', s === 'savings' && p !== null && p >= 1); }
+    if (el) { el.textContent = p === null ? 'Add income to get budget' : `${pct(p)} of budget`; el.classList.toggle('over', s !== 'savings' && p !== null && p > 1); el.classList.toggle('met', s === 'savings' && p !== null && p >= 1); }
     const meter = $(`[data-meter="${s}"]`);
     if (meter) { meter.classList.toggle('over', s !== 'savings' && p !== null && p > 1); meter.classList.toggle('met', s === 'savings' && p !== null && p >= 1); meter.firstElementChild.style.width = `${Math.max(0, Math.min(1, p ?? 0)) * 100}%`; }
   }
@@ -569,7 +569,7 @@ view.addEventListener('click', async (e) => {
   if (t.dataset.act === 'sec-add' || t.dataset.act === 'sec-rename') {
     const sec = t.dataset.act === 'sec-rename' ? doc.months[tab].sections.find((s) => s.key === t.dataset.key) : null;
     listEditing = sec;
-    $('#listDlgTitle').textContent = sec ? `Edit list (${monthLabel(tab)})` : `New spending list for (${monthLabel(tab)})`;
+    $('#listDlgTitle').textContent = sec ? `Edit list (${monthLabel(tab)})` : `New spending list for ${monthLabel(tab)}`;
     const f = $('#listForm'); f.elements.title.value = sec?.title ?? ''; f.elements.group.value = sec?.group ?? 'needs';
     $('#listDlg').showModal(); f.elements.title.focus(); return;
   }
