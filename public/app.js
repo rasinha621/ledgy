@@ -440,7 +440,7 @@ function renderSummary() {
         <div class="legend" id="pieLegend"></div>
       </section>
       <section class="card chart-card fill">
-        <h3>Spending by month</h3>
+        <div class="chart-head"><h3>Spending by month</h3><div class="chart-toggles" id="monthlyToggles"></div></div>
         <div class="chart-box tall"><canvas id="monthly" role="img" aria-label="Spending by month chart"></canvas></div>
       </section>
     </div>
@@ -477,7 +477,7 @@ function renderSummary() {
     options: {
       maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, layout: { padding: { top: 8, right: 8, bottom: 8 } },
       plugins: {
-        legend: { position: 'top', align: 'start', labels: { usePointStyle: true, pointStyle: 'rectRounded', boxWidth: 12, boxHeight: 12, padding: 24 } },
+        legend: { display: false },
         tooltip: tooltip((ctx) => ` ${ctx.dataset.label}: ${usd(ctx.raw)}`),
       },
       scales: {
@@ -486,6 +486,14 @@ function renderSummary() {
       },
     },
   });
+
+  $('#monthlyToggles').innerHTML = charts.monthly.data.datasets.map((d, i) => `<button type="button" class="chart-toggle" data-i="${i}" aria-pressed="true"><span class="swatch" style="background:${d.type === 'line' ? d.borderColor : d.backgroundColor}"></span>${d.label}</button>`).join('');
+  $('#monthlyToggles').onclick = (e) => {
+    const b = e.target.closest('.chart-toggle'); if (!b) return;
+    const i = +b.dataset.i, on = !charts.monthly.isDatasetVisible(i);
+    charts.monthly.setDatasetVisibility(i, on); charts.monthly.update();
+    b.setAttribute('aria-pressed', on);
+  };
 }
 
 /* ---------- Events ---------- */
