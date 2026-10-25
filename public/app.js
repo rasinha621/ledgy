@@ -284,7 +284,7 @@ function refresh() {
     set(`${s}Total`, fmt(c[`${s}Total`]));
     const p = c[`${s}Pct`];
     const el = $(`[data-k="${s}Pct"]`);
-    if (el) { el.textContent = p === null ? 'Add income to get goal' : `${pct(p)} of budget`; el.classList.toggle('over', s !== 'savings' && p !== null && p > 1); el.classList.toggle('met', s === 'savings' && p !== null && p >= 1); }
+    if (el) { el.textContent = p === null ? 'Add income to get budget' : `${pct(p)} of budget`; el.classList.toggle('over', s !== 'savings' && p !== null && p > 1); el.classList.toggle('met', s === 'savings' && p !== null && p >= 1); }
     const meter = $(`[data-meter="${s}"]`);
     if (meter) { meter.classList.toggle('over', s !== 'savings' && p !== null && p > 1); meter.classList.toggle('met', s === 'savings' && p !== null && p >= 1); meter.firstElementChild.style.width = `${Math.max(0, Math.min(1, p ?? 0)) * 100}%`; }
   }
@@ -440,7 +440,7 @@ function renderSummary() {
         <div class="legend" id="pieLegend"></div>
       </section>
       <section class="card chart-card fill">
-        <h3>Spending by month</h3>
+        <div class="chart-head"><h3>Spending by month</h3><div class="chart-toggles" id="monthlyToggles"></div></div>
         <div class="chart-box tall"><canvas id="monthly" role="img" aria-label="Spending by month chart"></canvas></div>
       </section>
     </div>
@@ -477,7 +477,7 @@ function renderSummary() {
     options: {
       maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, layout: { padding: { top: 8, right: 8, bottom: 8 } },
       plugins: {
-        legend: { position: 'top', align: 'start', labels: { usePointStyle: true, pointStyle: 'rectRounded', boxWidth: 12, boxHeight: 12, padding: 24 } },
+        legend: { display: false },
         tooltip: tooltip((ctx) => ` ${ctx.dataset.label}: ${usd(ctx.raw)}`),
       },
       scales: {
@@ -486,6 +486,14 @@ function renderSummary() {
       },
     },
   });
+
+  $('#monthlyToggles').innerHTML = charts.monthly.data.datasets.map((d, i) => `<button type="button" class="chart-toggle" data-i="${i}" aria-pressed="true"><span class="swatch" style="background:${d.type === 'line' ? d.borderColor : d.backgroundColor}"></span>${d.label}</button>`).join('');
+  $('#monthlyToggles').onclick = (e) => {
+    const b = e.target.closest('.chart-toggle'); if (!b) return;
+    const i = +b.dataset.i, on = !charts.monthly.isDatasetVisible(i);
+    charts.monthly.setDatasetVisibility(i, on); charts.monthly.update();
+    b.setAttribute('aria-pressed', on);
+  };
 }
 
 /* ---------- Events ---------- */
@@ -569,7 +577,7 @@ view.addEventListener('click', async (e) => {
   if (t.dataset.act === 'sec-add' || t.dataset.act === 'sec-rename') {
     const sec = t.dataset.act === 'sec-rename' ? doc.months[tab].sections.find((s) => s.key === t.dataset.key) : null;
     listEditing = sec;
-    $('#listDlgTitle').textContent = sec ? `Edit list (${monthLabel(tab)})` : `New summation list (${monthLabel(tab)})`;
+    $('#listDlgTitle').textContent = sec ? `Edit list (${monthLabel(tab)})` : `New spending list for ${monthLabel(tab)}`;
     const f = $('#listForm'); f.elements.title.value = sec?.title ?? ''; f.elements.group.value = sec?.group ?? 'needs';
     $('#listDlg').showModal(); f.elements.title.focus(); return;
   }
