@@ -569,7 +569,7 @@ view.addEventListener('click', async (e) => {
   if (t.dataset.act === 'sec-add' || t.dataset.act === 'sec-rename') {
     const sec = t.dataset.act === 'sec-rename' ? doc.months[tab].sections.find((s) => s.key === t.dataset.key) : null;
     listEditing = sec;
-    $('#listDlgTitle').textContent = sec ? `Edit list (${monthLabel(tab)})` : `New summation list (${monthLabel(tab)})`;
+    $('#listDlgTitle').textContent = sec ? `Edit list (${monthLabel(tab)})` : `New spending list for (${monthLabel(tab)})`;
     const f = $('#listForm'); f.elements.title.value = sec?.title ?? ''; f.elements.group.value = sec?.group ?? 'needs';
     $('#listDlg').showModal(); f.elements.title.focus(); return;
   }
