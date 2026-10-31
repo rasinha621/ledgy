@@ -43,7 +43,7 @@ let donutDrill = false; let pieDrill = false;
 
 /* ---------- Preferences (per browser) ---------- */
 const FULL_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-const MONTH_STYLES = { upper: 'JAN', title: 'Jan', num: '01', full: 'January' };
+const MONTH_STYLES = { upper: 'JAN', title: 'Jan', num: '01/26', full: 'January' };
 // One seed color generates the accent, tinted surfaces and chart colors (see seed.js and the stylesheet).
 const SEED_PRESETS = ['#6750a4', '#006a6a', '#386a20', '#8b5000', '#a43b5c', '#006874'];
 const DEFAULT_SEED = '#2563eb';
@@ -55,7 +55,7 @@ const loadPrefs = () => {
 let prefs = loadPrefs();
 const monthLabel = (i) => {
   const st = prefs.monthStyle;
-  return st === 'full' ? FULL_MONTHS[i] : st === 'num' ? String(i + 1).padStart(2, '0') : st === 'title' ? FULL_MONTHS[i].slice(0, 3) : MONTHS[i];
+  return st === 'full' ? FULL_MONTHS[i] : st === 'num' ? `${String(i + 1).padStart(2, '0')}/${String(doc?.year ?? new Date().getFullYear()).slice(-2)}` : st === 'title' ? FULL_MONTHS[i].slice(0, 3) : MONTHS[i];
 };
 const monthLabels = () => MONTHS.map((_, i) => monthLabel(i));
 function applyPrefs(p = prefs) {
@@ -232,7 +232,7 @@ function cardHtml(sec, month) {
   const custom = !['wants', 'needs', 'savings'].includes(sec); // lists that can be renamed or deleted
   const budgeted = ['wants', 'needs', 'savings'].includes(sec);
   const sub = budgeted
-    ? `<div class="card-sub"><span>Budget <span data-k="${sec}Budget"></span></span><span data-k="${sec}Pct"></span></div>
+    ? `<div class="card-sub"><span><span data-k="${sec}Budget"></span> <span data-k="${sec}Stipend"></span></span><span data-k="${sec}Pct"></span></div>
        <div class="meter" data-meter="${sec}"><span style="background:var(${meta.color})"></span></div>`
     : `<div class="feeds" data-feeds="${sec}"></div>`;
   const foot = sec === 'savings' ? '<div class="feeds" style="padding:0 14px 10px"></div>' : '';
@@ -288,8 +288,10 @@ function refresh() {
     el.textContent = text; el.classList.toggle('neg', !!neg);
   });
   for (const s of ['wants', 'needs', 'savings']) {
-    set(`${s}Budget`, fmt(c[`${s}Budget`]));
-    set(`${s}Total`, fmt(c[`${s}Total`]));
+    const hasStipend = c.stipend && c.stipendCategory === s;
+    set(`${s}Budget`, `$${fmt(c[`${s}Budget`] - (hasStipend ? c.stipend : 0))}`);
+    set(`${s}Stipend`, hasStipend ? `+ $${fmt(c.stipend)} stipend` : '');
+    set(`${s}Total`, `$${fmt(c[`${s}Total`])} spent`);
     const p = c[`${s}Pct`];
     const el = $(`[data-k="${s}Pct"]`);
     if (el) { el.textContent = p === null ? 'Add income to get budget' : `${pct(p)} of budget`; el.classList.toggle('over', s !== 'savings' && p !== null && p > 1); el.classList.toggle('met', s === 'savings' && p !== null && p >= 1); }
@@ -297,7 +299,7 @@ function refresh() {
     if (meter) { meter.classList.toggle('over', s !== 'savings' && p !== null && p > 1); meter.classList.toggle('met', s === 'savings' && p !== null && p >= 1); meter.firstElementChild.style.width = `${Math.max(0, Math.min(1, p ?? 0)) * 100}%`; }
   }
   for (const l of sumLists()) {
-    set(`${l.key}Total`, fmt(sumRows(listRows(m, l.key))));
+    set(`${l.key}Total`, `$${fmt(sumRows(listRows(m, l.key)))} spent`);
     const el = $(`[data-feeds="${l.key}"]`);
     const row = m[l.group].find((r) => r.kind === l.key);
     if (el) el.textContent = row ? `Total feeds the ${SEC[l.group].title} row “${row.label || l.title}”.` : `Not linked to ${SEC[l.group].title}. Type this list’s name in a ${SEC[l.group].title} amount to link it.`;
@@ -611,7 +613,7 @@ view.addEventListener('click', async (e) => {
   if (t.dataset.act === 'sec-add' || t.dataset.act === 'sec-rename') {
     const sec = t.dataset.act === 'sec-rename' ? findSection(t.dataset.key) : null;
     listEditing = sec;
-    $('#listDlgTitle').textContent = sec ? `Edit list (${monthLabel(tab)})` : `New spending list for ${monthLabel(tab)}`;
+    $('#listDlgTitle').textContent = sec ? `Edit list (${monthLabel(tab)})` : `New spending list for this month`;
     const f = $('#listForm'); f.elements.title.value = sec?.title ?? ''; f.elements.group.value = sec?.group ?? 'needs';
     $('#listGroup').hidden = !!sec?.base; // Groceries and Transit are always Needs lists
     $('#listDlg').showModal(); f.elements.title.focus(); return;
@@ -841,13 +843,25 @@ $('#signOutBtn').addEventListener('click', async () => {
   location.href = '/login';
 });
 $('#settingsDlg').addEventListener('close', () => { applyPrefs(); });
+function showSettingsTab(name) {
+  document.querySelectorAll('.set-tab').forEach((t) => { const on = t.dataset.tab === name; t.setAttribute('aria-selected', on); t.tabIndex = on ? 0 : -1; });
+  $('#setPanelData').hidden = name !== 'data'; $('#setPanelCustom').hidden = name !== 'custom';
+}
+document.querySelector('.set-tabs').addEventListener('click', (e) => { const t = e.target.closest('.set-tab'); if (t) showSettingsTab(t.dataset.tab); });
+document.querySelector('.set-tabs').addEventListener('keydown', (e) => {
+  if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+  const next = document.querySelector('.set-tab[aria-selected="false"]'); showSettingsTab(next.dataset.tab); next.focus();
+});
+$('#settingsForm').needsExtra.addEventListener('input', (e) => { e.target.form.stipendCategory.disabled = !Number(e.target.value); });
 $('#settingsBtn').addEventListener('click', () => {
+  showSettingsTab('data');
   const f = $('#settingsForm'); const s = doc.settings;
   $('#setYearLbl').textContent = doc.year;
   f.wantsRate.value = +(s.wantsRate * 100).toFixed(6);
   f.needsRate.value = +(s.needsRate * 100).toFixed(6);
   f.savingsRate.value = +(s.savingsRate * 100).toFixed(6);
   f.needsExtra.value = s.needsExtra; f.rothStart.value = s.rothStart;
+  f.stipendCategory.value = s.stipendCategory || 'needs'; f.stipendCategory.disabled = !s.needsExtra;
   f.limit401k.value = s.limit401k || 0; f.limitHsa.value = s.limitHsa || 0; f.limitRoth.value = s.limitRoth || 0;
   $('#backupLink').href = `/api/years/${doc.year}/backup.json`;
   f.theme.value = prefs.theme; f.density.value = prefs.density; f.monthStyle.value = prefs.monthStyle;
@@ -865,6 +879,7 @@ $('#settingsForm').addEventListener('submit', (e) => {
     needsRate: num(f.needsRate.value, s.needsRate * 100) / 100,
     savingsRate: num(f.savingsRate.value, s.savingsRate * 100) / 100,
     needsExtra: num(f.needsExtra.value, s.needsExtra), rothStart: num(f.rothStart.value, s.rothStart),
+    stipendCategory: f.stipendCategory.value,
     limit401k: Math.max(0, num(f.limit401k.value, s.limit401k || 0)), limitHsa: Math.max(0, num(f.limitHsa.value, s.limitHsa || 0)),
     limitRoth: Math.max(0, num(f.limitRoth.value, s.limitRoth || 0)),
   };
