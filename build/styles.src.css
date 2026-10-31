@@ -84,7 +84,7 @@
   /* Header and tabs */
   .top { @apply sticky top-0 z-[5] flex min-h-16 flex-wrap items-center justify-between gap-3 border-b border-line bg-card py-2 pr-4 pl-5 max-sm:static max-sm:pr-2 max-sm:pl-4; }
   .brand { @apply flex items-center gap-3 text-xl font-semibold tracking-tight; }
-  .logo { @apply size-7 rounded-lg; background: linear-gradient(90deg, var(--wants) 0 33%, var(--needs) 33% 66%, var(--savings) 66%); }
+  .logo { @apply size-7 rounded-lg; }
   .brand select { @apply h-8 cursor-pointer appearance-none rounded-md border border-line-strong bg-transparent pr-7 pl-3 text-sm font-medium text-ink-2 transition-colors hover:bg-ink/5;
     background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
     background-position: calc(100% - 15px) 14px, calc(100% - 10px) 14px; background-size: 5px 5px; background-repeat: no-repeat; }

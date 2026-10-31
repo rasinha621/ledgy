@@ -1,3 +1,4 @@
+import { syncIcon } from '/icon.js';
 import { hexToOklch, oklchToHex, isHex, applySeed } from '/seed.js';
 import { MONTHS, baseLists, calcMonth, calcSummary, needsRowValue, listRows, sumRows, n } from '/lib/calc.js';
 
@@ -63,6 +64,7 @@ function applyPrefs(p = prefs) {
   if (p.theme === 'auto') root.removeAttribute('data-theme'); else root.dataset.theme = p.theme;
   if (p.density === 'compact') root.dataset.density = 'compact'; else root.removeAttribute('data-density');
   applySeed(root, p.seed);
+  syncIcon();
 }
 applyPrefs();
 

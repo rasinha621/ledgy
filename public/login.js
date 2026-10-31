@@ -1,4 +1,5 @@
 import { applySeed } from '/seed.js';
+import { syncIcon } from '/icon.js';
 
 // Use the theme and seed color chosen in the app (saved in this browser).
 try {
@@ -7,6 +8,7 @@ try {
   if (p.theme === 'light' || p.theme === 'dark') root.dataset.theme = p.theme;
   applySeed(root, p.seed);
 } catch { /* keep the default theme */ }
+syncIcon();
 
 const form = document.getElementById('loginForm');
 const err = document.getElementById('loginErr');
