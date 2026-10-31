@@ -1,17 +1,11 @@
-import { Hct, SchemeTonalSpot, MaterialDynamicColors as DC, argbFromHex, hexFromArgb } from '/vendor-mcu.js';
+import { applySeed } from '/seed.js';
 
-// Use the theme and color chosen in the app (saved in this browser).
+// Use the theme and seed color chosen in the app (saved in this browser).
 try {
   const p = JSON.parse(localStorage.getItem('ledgy.prefs') || '{}') || {};
   const root = document.documentElement;
   if (p.theme === 'light' || p.theme === 'dark') root.dataset.theme = p.theme;
-  if (/^#[0-9a-f]{6}$/i.test(p.seed || '')) {
-    const dark = p.theme === 'dark' || (p.theme !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
-    const scheme = new SchemeTonalSpot(Hct.fromInt(argbFromHex(p.seed)), dark, 0);
-    for (const r of ['primary', 'onPrimary', 'secondary', 'onSecondary', 'secondaryContainer', 'onSecondaryContainer', 'error', 'errorContainer', 'onErrorContainer', 'surface', 'onSurface', 'onSurfaceVariant', 'surfaceContainerLow', 'surfaceContainerHigh', 'outline', 'outlineVariant']) {
-      root.style.setProperty(`--md-sys-color-${r.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}`, hexFromArgb(DC[r].getArgb(scheme)));
-    }
-  }
+  applySeed(root, p.seed);
 } catch { /* keep the default theme */ }
 
 const form = document.getElementById('loginForm');

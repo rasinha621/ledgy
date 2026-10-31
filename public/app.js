@@ -1,6 +1,5 @@
+import { hexToOklch, oklchToHex, isHex, applySeed } from '/seed.js';
 import { MONTHS, calcMonth, calcSummary, needsRowValue, listRows, sumRows, n } from '/lib/calc.js';
-
-import { Hct, SchemeTonalSpot, MaterialDynamicColors as DC, argbFromHex, hexFromArgb } from '/vendor-mcu.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -13,24 +12,25 @@ const store = {
   get(k) { try { return localStorage.getItem(k); } catch { return null; } },
   set(k, v) { try { localStorage.setItem(k, v); } catch { /* storage not available */ } },
 };
-const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+// Theme colors are light-dark()/oklch() values; resolve one to rgb() so canvas and Chart.js can use it.
+const probe = Object.assign(document.createElement('canvas'), { width: 1, height: 1 }).getContext('2d', { willReadFrequently: true });
+const cssVar = (name) => {
+  const el = Object.assign(document.createElement('i'), {}); el.style.color = `var(${name})`; document.body.append(el);
+  const c = getComputedStyle(el).color; el.remove();
+  probe.clearRect(0, 0, 1, 1); probe.fillStyle = c; probe.fillRect(0, 0, 1, 1);
+  const [r, g, b] = probe.getImageData(0, 0, 1, 1).data; return `rgb(${r}, ${g}, ${b})`;
+};
 
 /* ---------- Preferences (per browser) ---------- */
 const FULL_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const MONTH_STYLES = { upper: 'JAN', title: 'Jan', num: '01', full: 'January' };
-// M3 color system: one seed color generates the tonal palettes and every color role for light and dark.
+// One seed color generates the accent, tinted surfaces and chart colors (see seed.js and the stylesheet).
 const SEED_PRESETS = ['#6750a4', '#006a6a', '#386a20', '#8b5000', '#a43b5c', '#006874'];
-const ROLES = ['primary', 'onPrimary', 'primaryContainer', 'onPrimaryContainer', 'secondary', 'onSecondary', 'secondaryContainer', 'onSecondaryContainer',
-  'error', 'onError', 'errorContainer', 'onErrorContainer', 'surface', 'onSurface', 'onSurfaceVariant', 'surfaceContainerLowest', 'surfaceContainerLow',
-  'surfaceContainer', 'surfaceContainerHigh', 'surfaceContainerHighest', 'outline', 'outlineVariant', 'inverseSurface', 'inverseOnSurface', 'scrim', 'shadow'];
-const kebab = (r) => r.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
-// Chart colors are spread around the seed's hue in HCT at the same tones M3 uses for accents (40 light, 80 dark),
-// so they always stay distinct from each other and readable on the surface.
-const DATA_HUES = { '--wants': 0, '--needs': 120, '--savings': 240 };
+const DEFAULT_SEED = '#2563eb';
 const loadPrefs = () => {
   let p = {};
   try { p = JSON.parse(store.get('ledgy.prefs') || '{}') || {}; } catch { /* ignore bad JSON */ }
-  return { theme: ['light', 'dark'].includes(p.theme) ? p.theme : 'auto', density: p.density === 'compact' ? 'compact' : 'normal', monthStyle: MONTH_STYLES[p.monthStyle] ? p.monthStyle : 'upper', seed: /^#[0-9a-f]{6}$/i.test(p.seed || '') ? p.seed.toLowerCase() : null };
+  return { theme: ['light', 'dark'].includes(p.theme) ? p.theme : 'auto', density: p.density === 'compact' ? 'compact' : 'normal', monthStyle: MONTH_STYLES[p.monthStyle] ? p.monthStyle : 'upper', seed: isHex(p.seed) ? p.seed.toLowerCase() : null };
 };
 let prefs = loadPrefs();
 const monthLabel = (i) => {
@@ -38,23 +38,11 @@ const monthLabel = (i) => {
   return st === 'full' ? FULL_MONTHS[i] : st === 'num' ? String(i + 1).padStart(2, '0') : st === 'title' ? FULL_MONTHS[i].slice(0, 3) : MONTHS[i];
 };
 const monthLabels = () => MONTHS.map((_, i) => monthLabel(i));
-const seedVars = (seed, dark) => {
-  const src = argbFromHex(seed); const scheme = new SchemeTonalSpot(Hct.fromInt(src), dark, 0); const vars = {};
-  for (const r of ROLES) vars[`--md-sys-color-${kebab(r)}`] = hexFromArgb(DC[r].getArgb(scheme));
-  const { hue } = Hct.fromInt(src);
-  for (const [v, off] of Object.entries(DATA_HUES)) vars[v] = hexFromArgb(Hct.from((hue + off) % 360, 60, dark ? 80 : 40).toInt());
-  vars['--free'] = vars['--md-sys-color-outline-variant']; vars['--ok'] = vars['--savings'];
-  return vars;
-};
-let appliedVars = [];
 function applyPrefs(p = prefs) {
   const root = document.documentElement;
   if (p.theme === 'auto') root.removeAttribute('data-theme'); else root.dataset.theme = p.theme;
   if (p.density === 'compact') root.dataset.density = 'compact'; else root.removeAttribute('data-density');
-  appliedVars.forEach((v) => root.style.removeProperty(v)); appliedVars = [];
-  if (!p.seed) return;
-  const dark = p.theme === 'dark' || (p.theme === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
-  for (const [k, v] of Object.entries(seedVars(p.seed, dark))) { root.style.setProperty(k, v); appliedVars.push(k); }
+  applySeed(root, p.seed);
 }
 applyPrefs();
 
@@ -312,7 +300,7 @@ function chartTheme() {
   Chart.defaults.color = cssVar('--text-2');
   Chart.defaults.borderColor = cssVar('--line');
 }
-// Chart hover tooltips are Material 3 rich tooltips: surface container, elevation, subhead plus supporting text.
+// Chart hover tooltips use a card-style tooltip: a heading line plus supporting text.
 const chartTip = Object.assign(document.createElement('div'), { id: 'chartTip', role: 'tooltip' });
 document.body.append(chartTip);
 function externalTip({ chart, tooltip: t }) {
@@ -671,7 +659,7 @@ $('#yearSelect').addEventListener('change', (e) => loadYear(Number(e.target.valu
 $('#exportBtn').addEventListener('click', async (e) => { e.preventDefault(); await flush(); location.href = $('#exportBtn').href; });
 
 /* ---------- Dialogs ---------- */
-// Material 3 basic dialog in place of confirm()/alert(). Resolves true on the confirming action, false on cancel, Esc or scrim click.
+// Modal dialog in place of confirm()/alert(). Resolves true on the confirming action, false on cancel, Esc or scrim click.
 function askDialog({ title, text, ok = 'OK', cancel = 'Cancel', danger = false }) {
   return new Promise((resolve) => {
     const d = $('#msgDlg');
@@ -751,40 +739,39 @@ $('#newForm').addEventListener('submit', async (e) => {
   } catch (err) { askDialog({ title: err.status === 409 ? `${y} already exists` : 'Could not create the year', text: err.status === 409 ? 'Pick a different year, or select it from the year menu.' : err.message, cancel: null }); }
 });
 
-/* M3-style seed picker: preset chips plus a custom color built from HCT hue and chroma sliders. */
-let draftSeed = null;
-const hueTrack = () => `linear-gradient(90deg, ${Array.from({ length: 13 }, (_, i) => hexFromArgb(Hct.from(i * 30, 60, 60).toInt())).join(', ')})`;
+/* Seed picker: preset chips plus a custom color from OKLCH hue and chroma sliders. */
+let draftSeed = null; let seedPanelOpen = false;
+const hueTrack = () => `linear-gradient(90deg, ${Array.from({ length: 13 }, (_, i) => `oklch(.7 .15 ${i * 30})`).join(', ')})`;
+const chromaTrack = (h) => `linear-gradient(90deg, oklch(.6 0 ${h}), oklch(.6 .2 ${h}))`;
 function renderSeedPicker() {
-  const chip = (seed, label) => `<button type="button" class="seed${(draftSeed || null) === seed ? ' on' : ''}" data-seed="${seed || ''}" aria-label="${label}" aria-pressed="${(draftSeed || null) === seed}" style="--c:${seed || '#415f91'}">${seed ? '' : '<span>A</span>'}</button>`;
+  const chip = (seed, label) => `<button type="button" class="seed${draftSeed === seed ? ' on' : ''}" data-seed="${seed || ''}" aria-label="${label}" aria-pressed="${draftSeed === seed}" style="--c:${seed || DEFAULT_SEED}">${seed ? '' : '<span>A</span>'}</button>`;
   const custom = draftSeed && !SEED_PRESETS.includes(draftSeed);
   $('#seedChips').innerHTML = chip(null, 'Default') + SEED_PRESETS.map((c) => chip(c, c)).join('')
     + `<button type="button" class="seed custom${custom ? ' on' : ''}" data-seed="custom" aria-label="Custom color" aria-pressed="${!!custom}" style="--c:${custom ? draftSeed : 'transparent'}">+</button>`;
   $('#seedCustom').hidden = !seedPanelOpen;
 }
-let seedPanelOpen = false;
 function syncSeedSliders() {
-  const h = Hct.fromInt(argbFromHex(draftSeed || '#415f91'));
-  const f = $('#settingsForm');
-  f.seedHue.value = Math.round(h.hue); f.seedChroma.value = Math.round(h.chroma); f.seedHex.value = hexFromArgb(h.toInt());
-  f.seedChroma.style.setProperty('--track', `linear-gradient(90deg, ${hexFromArgb(Hct.from(h.hue, 0, 50).toInt())}, ${hexFromArgb(Hct.from(h.hue, 100, 50).toInt())})`);
+  const f = $('#settingsForm'); const { h, c } = hexToOklch(draftSeed || DEFAULT_SEED);
+  f.seedHue.value = Math.round(h); f.seedChroma.value = Math.min(c, 0.2).toFixed(3); f.seedHex.value = draftSeed || DEFAULT_SEED;
+  f.seedHue.style.setProperty('--track', hueTrack()); f.seedChroma.style.setProperty('--track', chromaTrack(Math.round(h)));
 }
 function previewDraft() { const f = $('#settingsForm'); applyPrefs({ ...prefs, theme: f.theme.value, density: f.density.value, seed: draftSeed }); }
 $('#seedChips').addEventListener('click', (e) => {
   const b = e.target.closest('[data-seed]'); if (!b) return;
-  if (b.dataset.seed === 'custom') { seedPanelOpen = !seedPanelOpen; if (!draftSeed) draftSeed = '#415f91'; syncSeedSliders(); } else { draftSeed = b.dataset.seed || null; seedPanelOpen = false; }
+  if (b.dataset.seed === 'custom') { seedPanelOpen = !seedPanelOpen; if (!draftSeed) draftSeed = DEFAULT_SEED; syncSeedSliders(); } else { draftSeed = b.dataset.seed || null; seedPanelOpen = false; }
   renderSeedPicker(); previewDraft();
 });
 $('#seedCustom').addEventListener('input', (e) => {
   const f = $('#settingsForm');
   if (e.target === f.seedHex) {
-    if (!/^#[0-9a-f]{6}$/i.test(f.seedHex.value)) return;
+    if (!isHex(f.seedHex.value)) return;
     draftSeed = f.seedHex.value.toLowerCase();
   } else {
-    draftSeed = hexFromArgb(Hct.from(Number(f.seedHue.value), Number(f.seedChroma.value), 40).toInt());
+    draftSeed = oklchToHex(0.55, Number(f.seedChroma.value), Number(f.seedHue.value));
+    f.seedHex.value = draftSeed;
   }
-  if (e.target !== f.seedHex) f.seedHex.value = draftSeed;
-  f.seedChroma.style.setProperty('--track', `linear-gradient(90deg, ${hexFromArgb(Hct.from(Number(f.seedHue.value), 0, 50).toInt())}, ${hexFromArgb(Hct.from(Number(f.seedHue.value), 100, 50).toInt())})`);
-  $('#seedChips .custom').style.setProperty('--c', draftSeed); $('#seedChips .custom').classList.add('on');
+  f.seedChroma.style.setProperty('--track', chromaTrack(Math.round(hexToOklch(draftSeed).h)));
+  const chip = $('#seedChips .custom'); chip.style.setProperty('--c', draftSeed); chip.classList.add('on');
   $('#seedChips').querySelectorAll('.seed:not(.custom)').forEach((b) => b.classList.remove('on'));
   previewDraft();
 });
@@ -807,7 +794,7 @@ $('#settingsBtn').addEventListener('click', () => {
   f.limit401k.value = s.limit401k || 0; f.limitHsa.value = s.limitHsa || 0; f.limitRoth.value = s.limitRoth || 0;
   $('#backupLink').href = `/api/years/${doc.year}/backup.json`;
   f.theme.value = prefs.theme; f.density.value = prefs.density; f.monthStyle.value = prefs.monthStyle;
-  draftSeed = prefs.seed; seedPanelOpen = false; $('#seedCustom').querySelector('input[type=range]').style.setProperty('--track', hueTrack());
+  draftSeed = prefs.seed; seedPanelOpen = false;
   renderSeedPicker();
   $('#settingsDlg').showModal();
 });
@@ -840,7 +827,7 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { ap
 // Charts draw text on canvas, so redraw once the web font is ready.
 document.fonts?.ready.then(() => doc && render());
 
-/* ---------- Plain tooltips (Material 3): replace native title tooltips ---------- */
+/* ---------- Plain tooltips : replace native title tooltips ---------- */
 const tipEl = Object.assign(document.createElement('div'), { id: 'tip', role: 'tooltip' });
 document.body.append(tipEl);
 let tipTimer = null; let tipFor = null;

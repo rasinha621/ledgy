@@ -55,7 +55,7 @@ If you have a real domain name, change `tls internal` in the `Caddyfile` to a Le
 - Ledgy itself serves plain HTTP. In `compose.yaml` it has no published port, and the Caddy container in front of it
   provides HTTPS, so the login is encrypted. If you run `node server.js` yourself, put your own HTTPS proxy in front.
 - Changes to data must come from the Ledgy page itself; requests from other websites are refused.
-- Fonts are served from the app (`public/fonts`), so the page makes no requests to other sites.
+- Styles are compiled Tailwind CSS served from the app (`public/styles.css`), so the page makes no requests to other sites. After changing classes or `build/styles.src.css`, run `npm run build:css`.
 - Imported `.xlsx` files are limited to 5 MB (20 MB unpacked).
 
 ## How it replicates the spreadsheet
