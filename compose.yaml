@@ -1,23 +1,20 @@
-# Put your own values in a .env file next to this file (Dockge: "Edit" > ".env").
-# Git does not track .env, so "git pull" never changes your settings.
 services:
   ledgy:
     build: .
-    pull_policy: build            # Deploy always builds from the files in this folder
+    pull_policy: build
     restart: unless-stopped
-    # No "ports": only Caddy (below) can reach Ledgy, so every request goes over HTTPS.
     environment:
       - TZ=${TZ:-America/New_York}
-      - PUID=${PUID:-568}         # TrueNAS "apps" user
+      - PUID=${PUID:-568}
       - PGID=${PGID:-568}
       - BASIC_AUTH_USER=${BASIC_AUTH_USER:-}
       - BASIC_AUTH_PASS=${BASIC_AUTH_PASS:-}
-      - ALLOW_NO_AUTH=${ALLOW_NO_AUTH:-}     # 1 = run without a login (trusted network only)
-      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-}     # e.g. ledgy.example.com,nas.local
-      - LEDGY_HOST=${LEDGY_HOST:-localhost}  # Only used in the startup log line
-      - TRUST_PROXY=1                        # Caddy is one proxy hop, so the login lockout sees the real client
+      - ALLOW_NO_AUTH=${ALLOW_NO_AUTH:-}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-}
+      - LEDGY_HOST=${LEDGY_HOST:-localhost}
+      - TRUST_PROXY=1
     volumes:
-      - ledgy-data:/data          # Docker names it <stack folder>_ledgy-data
+      - ledgy-data:/data
 
   caddy:
     image: caddy:2
@@ -27,7 +24,8 @@ services:
     ports:
       - "${HTTPS_PORT:-8443}:8443"   # TrueNAS uses 443 for its own web UI, so Ledgy uses 8443
     environment:
-      - LEDGY_HOST=${LEDGY_HOST:-localhost}   # The name or IP you type in the browser, e.g. nas.local or 192.168.1.20
+      - LEDGY_HOST=${LEDGY_HOST:-localhost}
+      - TAILSCALE_HOST=${TAILSCALE_HOST:-localhost}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data          # Holds the certificate authority, so keep this volume

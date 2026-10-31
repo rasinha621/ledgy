@@ -7,7 +7,7 @@
 	default_sni {$LEDGY_HOST:localhost}
 }
 
-https://{$LEDGY_HOST:localhost}:8443 {
+https://{$LEDGY_HOST:localhost}:8443, https://{$TAILSCALE_HOST:localhost}:8443 {
 	tls internal
 	encode gzip
 	header Strict-Transport-Security "max-age=31536000"

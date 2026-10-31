@@ -88,14 +88,25 @@
   <dialog id="settingsDlg">
     <form method="dialog" id="settingsForm">
       <h2>Settings for <span id="setYearLbl"></span></h2>
+      <div class="set-tabs" role="tablist">
+        <button type="button" class="set-tab" role="tab" id="setTabData" aria-controls="setPanelData" aria-selected="true" data-tab="data">Data</button>
+        <button type="button" class="set-tab" role="tab" id="setTabCustom" aria-controls="setPanelCustom" aria-selected="false" tabindex="-1" data-tab="custom">Customization</button>
+      </div>
+      <div id="setPanelData" class="set-panel" role="tabpanel" aria-labelledby="setTabData">
       <fieldset>
-        <legend>Budgets (percent of income)</legend>
+        <legend>Budget breakdown</legend>
         <div class="grid3">
           <label class="tf"><input type="number" step="any" name="needsRate" placeholder=" "><span>Needs %</span></label>
           <label class="tf"><input type="number" step="any" name="wantsRate" placeholder=" "><span>Wants %</span></label>
           <label class="tf"><input type="number" step="any" name="savingsRate" placeholder=" "><span>Savings %</span></label>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Miscellaneous</legend>
+        <div class="grid3">
           <label class="tf"><input type="number" step="any" name="needsExtra" placeholder=" "><span>Stipends $</span></label>
-          <label class="tf"><input type="number" step="any" name="rothStart" placeholder=" "><span>Additional Roth contributions $</span></label>
+          <label class="tf"><select name="stipendCategory" aria-label="Stipend category"><option value="needs">Need</option><option value="wants">Want</option><option value="savings">Savings</option></select><span>Stipend goes to</span></label>
+          <label class="tf"><input type="number" step="any" name="rothStart" placeholder=" "><span>Roth start balance $</span></label>
         </div>
       </fieldset>
       <fieldset>
@@ -114,11 +125,13 @@
           <a id="backupLink" class="btn" href="#" download title="Download this year as JSON">JSON backup</a>
         </div>
       </fieldset>
+      </div>
+      <div id="setPanelCustom" class="set-panel" role="tabpanel" aria-labelledby="setTabCustom" hidden>
       <fieldset>
         <legend>Preferences (this browser)</legend>
         <div class="grid3">
           <label class="tf sel"><select name="theme"><option value="auto">Auto</option><option value="light">Light</option><option value="dark">Dark</option></select><span>Theme</span></label>
-          <label class="tf sel"><select name="monthStyle"><option value="upper">JAN</option><option value="title">Jan</option><option value="num">01</option><option value="full">January</option></select><span>Month style</span></label>
+          <label class="tf sel"><select name="monthStyle"><option value="upper">JAN</option><option value="title">Jan</option><option value="num">MM/YY</option><option value="full">January</option></select><span>Month style</span></label>
           <label class="tf sel"><select name="density"><option value="normal">Normal</option><option value="compact">Compact</option></select><span>Density</span></label>
         </div>
         <div class="seed-group">
@@ -131,6 +144,7 @@
           </div>
         </div>
       </fieldset>
+      </div>
       <div class="dlg-actions">
         <button type="button" id="deleteYearBtn" class="btn danger">Delete year</button>
         <span class="spacer"></span>
