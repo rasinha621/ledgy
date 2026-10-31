@@ -197,6 +197,7 @@ app.post('/api/years/:year', (req, res) => {
       ...emptyMonth(),
       needs: last.needs.filter((r) => r.label || r.kind !== 'manual').map((r) => ({ label: r.label, kind: r.kind, amount: null })),
       savings: last.savings.map((r) => ({ ...r })),
+      removed: [...(last.removed || [])], titles: { ...last.titles },
     }));
   }
   res.status(201).json(saveYear(y, doc));

@@ -159,7 +159,8 @@
 
   /* Charts */
   .chart-card { @apply p-4; }
-  .chart-card h3 { @apply m-0 mb-1 text-base font-semibold; }
+  .chart-card h3 { @apply m-0 mb-1 flex items-center gap-2 text-base font-semibold; }
+  .chart-card .sub .btn { @apply h-8 px-2; }
   .chart-card .sub { @apply mb-4 text-xs text-ink-2; }
   .chart-head { @apply mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1; }
   .chart-head h3 { margin: 0; }
@@ -173,6 +174,8 @@
   .chart-card.fill .chart-box { @apply h-auto min-h-80 flex-1; }
   .legend { @apply mt-4 grid gap-2 text-sm; }
   .legend div { @apply grid grid-cols-[12px_1fr_auto_auto] items-center gap-2 tabular-nums; }
+  .legend .legend-total { @apply mt-1 border-t border-line pt-2 font-medium; }
+  .legend .drillable { @apply -mx-2 cursor-pointer rounded-md px-2 py-0.5 hover:bg-ink/5; }
   .legend .pct { @apply min-w-[52px] text-right text-ink-2; }
 
   /* Summary */

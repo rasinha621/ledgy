@@ -1,5 +1,5 @@
 import { hexToOklch, oklchToHex, isHex, applySeed } from '/seed.js';
-import { MONTHS, calcMonth, calcSummary, needsRowValue, listRows, sumRows, n } from '/lib/calc.js';
+import { MONTHS, baseLists, calcMonth, calcSummary, needsRowValue, listRows, sumRows, n } from '/lib/calc.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -14,12 +14,32 @@ const store = {
 };
 // Theme colors are light-dark()/oklch() values; resolve one to rgb() so canvas and Chart.js can use it.
 const probe = Object.assign(document.createElement('canvas'), { width: 1, height: 1 }).getContext('2d', { willReadFrequently: true });
-const cssVar = (name) => {
-  const el = Object.assign(document.createElement('i'), {}); el.style.color = `var(${name})`; document.body.append(el);
+const resolveColor = (css) => {
+  const el = document.createElement('i'); el.style.color = css; document.body.append(el);
   const c = getComputedStyle(el).color; el.remove();
   probe.clearRect(0, 0, 1, 1); probe.fillStyle = c; probe.fillRect(0, 0, 1, 1);
   const [r, g, b] = probe.getImageData(0, 0, 1, 1).data; return `rgb(${r}, ${g}, ${b})`;
 };
+const cssVar = (name) => resolveColor(`var(${name})`);
+
+// Clicking Savings in a breakdown chart swaps it for the savings rows. These are shades of the savings color.
+const savingsShades = (n) => { const base = cssVar('--savings'); const bg = cssVar('--surface'); return Array.from({ length: n }, (_, i) => resolveColor(`color-mix(in oklch, ${base} ${Math.round(100 - (i * 55) / Math.max(n, 1))}%, ${bg})`)); };
+// Savings rows summed across the given months, grouped like the Summary table: the first five rows by position
+// (401k, HSA, Roth, Cash, Investing, whatever a month calls them) and any extra rows by label, largest first. Negative rows (withdrawals) are kept so the list adds up to the Savings total.
+function savingsBreakdown(months) {
+  const by = new Map();
+  for (const m of months) {
+    m.savings.forEach((r, i) => {
+      const fixed = i < SUMMARY_SAVINGS.length;
+      const label = fixed ? SUMMARY_SAVINGS[i] : r.label.trim() || `Row ${i + 2}`; const k = fixed ? `#${i}` : label.toLowerCase();
+      by.set(k, { label: by.get(k)?.label ?? label, value: (by.get(k)?.value ?? 0) + needsRowValue(r, m) });
+    });
+  }
+  const items = [...by.values()].map((l) => ({ ...l, value: round2(l.value) })).filter((l) => l.value !== 0).sort((a, b) => b.value - a.value);
+  const colors = savingsShades(items.length);
+  return items.map((l, i) => ({ ...l, color: l.value < 0 ? cssVar('--over') : colors[i] }));
+}
+let donutDrill = false; let pieDrill = false;
 
 /* ---------- Preferences (per browser) ---------- */
 const FULL_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -59,7 +79,7 @@ const LINKABLE = ['wants', 'needs', 'savings']; // sections whose rows can total
 const GROUP_LABEL = { needs: 'Need', wants: 'Want', savings: 'Saving' };
 // All lists of the current month. Groceries and Transit are Needs lists; the rest carry their own group.
 const sumLists = (group, m = doc.months[tab]) => [
-  { key: 'groceries', title: 'Groceries', group: 'needs' }, { key: 'transit', title: 'Transit', group: 'needs' },
+  ...baseLists(m),
   ...(m?.sections || []).map((s) => ({ ...s, group: s.group || 'needs' })),
 ].filter((l) => !group || l.group === group);
 const listInfo = (key) => sumLists().find((l) => l.key === key);
@@ -67,7 +87,7 @@ const findList = (text, group) => {
   const q = String(text).trim().replace(/^Σ\s*/, '').toLowerCase();
   return q ? sumLists(group).find((l) => l.title.toLowerCase() === q) : undefined;
 };
-const secMeta = (sec) => SEC[sec] || { title: listInfo(sec)?.title ?? sec, color: `--${listInfo(sec)?.group ?? 'needs'}`, ph: 'Note' };
+const secMeta = (sec) => (SEC[sec] ? { ...SEC[sec], title: listInfo(sec)?.title ?? SEC[sec].title } : { title: listInfo(sec)?.title ?? sec, color: `--${listInfo(sec)?.group ?? 'needs'}`, ph: 'Note' });
 const rowsOf = (month, sec) => (BASE_SECS.includes(sec) ? month[sec] : ((month.custom ||= {})[sec] ||= []));
 const SUMMARY_SAVINGS = ['401k', 'HSA', 'Roth', 'Cash', 'Investing'];
 
@@ -209,7 +229,7 @@ function rowHtml(sec, r, i, month) {
 function cardHtml(sec, month) {
   const rows = rowsOf(month, sec);
   const meta = secMeta(sec);
-  const custom = !BASE_SECS.includes(sec);
+  const custom = !['wants', 'needs', 'savings'].includes(sec); // lists that can be renamed or deleted
   const budgeted = ['wants', 'needs', 'savings'].includes(sec);
   const sub = budgeted
     ? `<div class="card-sub"><span>Budget <span data-k="${sec}Budget"></span></span><span data-k="${sec}Pct"></span></div>
@@ -240,7 +260,7 @@ function renderMonth() {
       <div class="kpi"><div class="k">Amount remaining </div><div class="v" data-k="remaining"></div></div>
     </div>
     <div class="month-grid">
-      <div class="cols">${[...BASE_SECS, ...(m.sections || []).map((s) => s.key)].map((s) => cardHtml(s, m)).join('')}
+      <div class="cols">${['wants', 'needs', 'savings', ...baseLists(m).map((l) => l.key), ...(m.sections || []).map((s) => s.key)].map((s) => cardHtml(s, m)).join('')}
         <button class="add-list" data-act="sec-add">+ Add new category</button></div>
       <aside class="side">
         <section class="card chart-card">
@@ -348,6 +368,8 @@ function buildMonthCharts() {
     data: { labels: [], datasets: [{ data: [], backgroundColor: [], borderColor: cssVar('--surface'), borderWidth: 2, hoverOffset: 4 }] },
     options: {
       cutout: '68%', maintainAspectRatio: false, animation: { duration: 250 },
+      onClick: (_e, els, chart) => { if (donutDrill || chart.data.labels[els[0]?.index] === 'Savings') { donutDrill = !donutDrill; refresh(); } },
+      onHover: (_e, els, chart) => { chart.canvas.style.cursor = donutDrill || chart.data.labels[els[0]?.index] === 'Savings' ? 'pointer' : 'default'; },
       plugins: {
         legend: { display: false },
         tooltip: tooltip((ctx) => ` ${ctx.label}: ${usd(ctx.raw)}`),
@@ -372,19 +394,26 @@ function buildMonthCharts() {
 
 function updateMonthCharts(m, c) {
   if (!charts.donut) return;
-  const parts = donutData(c);
+  const sav = savingsBreakdown([m]);
+  if (!sav.length) donutDrill = false;
+  const parts = donutDrill ? sav.map((l) => ({ label: l.label, value: l.value, color: l.color })) : donutData(c);
   const shown = parts.map((p) => Math.max(0, p.value));
   const ds = charts.donut.data.datasets[0];
   charts.donut.data.labels = parts.map((p) => p.label);
   ds.data = shown; ds.backgroundColor = parts.map((p) => p.color);
-  const base = c.hasIncome && c.income > 0 ? c.income : shown.reduce((a, b) => a + b, 0);
-  charts.donut.options.plugins.centerText.lines = ['Allocated', usd(c.allocated)];
+  const base = donutDrill ? c.savingsTotal : c.hasIncome && c.income > 0 ? c.income : shown.reduce((a, b) => a + b, 0);
+  charts.donut.options.plugins.centerText.lines = donutDrill ? ['Savings', usd(c.savingsTotal)] : ['Allocated', usd(c.allocated)];
   charts.donut.update();
-  $('#donutSub').textContent = c.hasIncome
-    ? (c.remaining < -0.005 ? `Over income by ${usd(-c.remaining)}.` : `Share of income ${usd(c.income)}.`)
-    : 'No income entered. Shares are of the total allocated.';
-  $('#donutLegend').innerHTML = parts.map((p) => `<div><span class="swatch" style="background:${p.color}"></span><span>${p.label}</span>
-    <span>${usd(p.value)}</span><span class="pct">${base ? pct(p.value / base) : '—'}</span></div>`).join('');
+  if (donutDrill) $('#donutSub').innerHTML = '<button type="button" class="btn ghost" data-drill="donut">← All categories</button>';
+  else {
+    $('#donutSub').textContent = c.hasIncome
+      ? (c.remaining < -0.005 ? `Over income by ${usd(-c.remaining)}.` : `Share of income ${usd(c.income)}.`)
+      : 'No income entered. Shares are of the total allocated.';
+    if (sav.length) $('#donutSub').append(' Click Savings for its breakdown.');
+  }
+  $('#donutLegend').innerHTML = parts.map((p) => `<div${!donutDrill && p.label === 'Savings' && sav.length ? ' class="drillable" data-drill="donut" tabindex="0" role="button"' : ''}><span class="swatch" style="background:${p.color}"></span><span>${esc(p.label)}</span>
+    <span>${usd(p.value)}</span><span class="pct">${base ? pct(p.value / base) : '—'}</span></div>`).join('')
+    + (donutDrill ? `<div class="legend-total"><span></span><span>Total</span><span>${usd(c.savingsTotal)}</span><span class="pct">${c.savingsTotal ? '100.00%' : '—'}</span></div>` : '');
 
   const lines = m.needs.map((r, i) => ({ label: r.label || `Row ${i + 2}`, value: needsRowValue(r, m) }))
     .filter((l) => l.value > 0).sort((a, b) => b.value - a.value);
@@ -423,7 +452,7 @@ function renderSummary() {
     </table></div></section>
     <div class="summary-grid">
       <section class="card chart-card">
-        <h3>Year breakdown</h3>
+        <h3 id="pieTitle">Year breakdown</h3>
         <div class="chart-box tall"><canvas id="pie" role="img" aria-label="Year breakdown chart"></canvas></div>
         <div class="legend" id="pieLegend"></div>
       </section>
@@ -441,17 +470,34 @@ function renderSummary() {
     </table></div></section>`;
 
   chartTheme();
-  const pieParts = [
-    ['Total Wants', s.totalWants, cssVar('--wants')], ['Total Needs', s.totalNeeds, cssVar('--needs')],
-    ['Total Savings', s.totalSavings, cssVar('--savings')],
-  ];
-  const pieTotal = pieParts.reduce((t, p) => t + Math.max(0, p[1]), 0);
+  const pieParts = () => (pieDrill
+    ? savingsBreakdown(doc.months).map((l) => [l.label, l.value, l.color])
+    : [['Total Wants', s.totalWants, cssVar('--wants')], ['Total Needs', s.totalNeeds, cssVar('--needs')], ['Total Savings', s.totalSavings, cssVar('--savings')]]);
+  const canDrill = () => !pieDrill && savingsBreakdown(doc.months).length > 0;
+  const paintPie = () => {
+    const parts = pieParts(); const total = pieDrill ? s.totalSavings : parts.reduce((t, p) => t + Math.max(0, p[1]), 0);
+    const ds = charts.pie.data.datasets[0];
+    charts.pie.data.labels = parts.map((p) => p[0]); ds.data = parts.map((p) => Math.max(0, p[1])); ds.backgroundColor = parts.map((p) => p[2]);
+    charts.pie.options.plugins.tooltip = tooltip((ctx) => ` ${ctx.label}: ${usd(ctx.raw)} (${total ? pct(ctx.raw / total) : '—'})`);
+    charts.pie.update();
+    $('#pieTitle').innerHTML = pieDrill ? 'Savings breakdown <button type="button" class="btn ghost" data-drill="pie">← Year breakdown</button>' : 'Year breakdown';
+    const drillable = canDrill();
+    $('#pieLegend').innerHTML = parts.map(([l, v, col]) => `<div${drillable && l === 'Total Savings' ? ' class="drillable" data-drill="pie" tabindex="0" role="button"' : ''}><span class="swatch" style="background:${col}"></span><span>${esc(l)}</span><span>${usd(v)}</span><span class="pct">${total ? pct((pieDrill ? v : Math.max(0, v)) / total) : '—'}</span></div>`).join('')
+      + (pieDrill ? `<div class="legend-total"><span></span><span>Total</span><span>${usd(s.totalSavings)}</span><span class="pct">${total ? '100.00%' : '—'}</span></div>` : '');
+  };
+  pieDrill = false;
   charts.pie = new Chart($('#pie'), {
     type: 'pie',
-    data: { labels: pieParts.map((p) => p[0]), datasets: [{ data: pieParts.map((p) => Math.max(0, p[1])), backgroundColor: pieParts.map((p) => p[2]), borderColor: cssVar('--surface'), borderWidth: 2 }] },
-    options: { maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: tooltip((ctx) => ` ${ctx.label}: ${usd(ctx.raw)} (${pieTotal ? pct(ctx.raw / pieTotal) : '—'})`) } },
+    data: { labels: [], datasets: [{ data: [], backgroundColor: [], borderColor: cssVar('--surface'), borderWidth: 2 }] },
+    options: {
+      maintainAspectRatio: false, plugins: { legend: { display: false } },
+      onClick: (_e, els, chart) => { if (pieDrill || (canDrill() && chart.data.labels[els[0]?.index] === 'Total Savings')) { pieDrill = !pieDrill; paintPie(); } },
+      onHover: (_e, els, chart) => { chart.canvas.style.cursor = pieDrill || (canDrill() && chart.data.labels[els[0]?.index] === 'Total Savings') ? 'pointer' : 'default'; },
+    },
   });
-  $('#pieLegend').innerHTML = pieParts.map(([l, v, col]) => `<div><span class="swatch" style="background:${col}"></span><span>${l}</span><span>${usd(v)}</span><span class="pct">${pieTotal ? pct(Math.max(0, v) / pieTotal) : '—'}</span></div>`).join('');
+  paintPie();
+  $('#pieLegend').parentElement.addEventListener('click', (e) => { if (e.target.closest('[data-drill="pie"]')) { pieDrill = !pieDrill; paintPie(); } });
+  $('#pieLegend').parentElement.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('[data-drill="pie"]')) { e.preventDefault(); pieDrill = !pieDrill; paintPie(); } });
 
   const bar = (label, key, color) => ({ type: 'bar', label, data: s.months.map((c) => Math.max(0, c[key])), backgroundColor: color, stack: 's', borderColor: cssVar('--surface'), borderWidth: { top: 2 }, borderRadius: 3, borderSkipped: 'start', barPercentage: 0.7, categoryPercentage: 0.8 });
   charts.monthly = new Chart($('#monthly'), {
@@ -563,18 +609,20 @@ view.addEventListener('click', async (e) => {
   if (t.dataset.act === 'import') return openImport();
   if (t.dataset.act === 'new') return openNew();
   if (t.dataset.act === 'sec-add' || t.dataset.act === 'sec-rename') {
-    const sec = t.dataset.act === 'sec-rename' ? doc.months[tab].sections.find((s) => s.key === t.dataset.key) : null;
+    const sec = t.dataset.act === 'sec-rename' ? findSection(t.dataset.key) : null;
     listEditing = sec;
     $('#listDlgTitle').textContent = sec ? `Edit list (${monthLabel(tab)})` : `New spending list for ${monthLabel(tab)}`;
     const f = $('#listForm'); f.elements.title.value = sec?.title ?? ''; f.elements.group.value = sec?.group ?? 'needs';
+    $('#listGroup').hidden = !!sec?.base; // Groceries and Transit are always Needs lists
     $('#listDlg').showModal(); f.elements.title.focus(); return;
   }
   if (t.dataset.act === 'sec-del') {
-    const sec = doc.months[tab].sections.find((s) => s.key === t.dataset.key);
-    const m = doc.months[tab];
+    const m = doc.months[tab]; const sec = findSection(t.dataset.key);
     if (!await askDialog({ title: `Delete “${sec.title}”?`, text: `The list and its rows will be removed from this month's spending. Rows linked to it become empty amounts.`, ok: 'Delete', danger: true })) return;
-    m.sections = m.sections.filter((s) => s !== sec);
-    delete m.custom?.[sec.key];
+    if (sec.base) { (m.removed ||= []).push(sec.key); m[sec.key] = []; delete m.titles?.[sec.key]; } else {
+      m.sections = m.sections.filter((s) => s !== sec);
+      delete m.custom?.[sec.key];
+    }
     for (const g of LINKABLE) for (const r of m[g]) if (r.kind === sec.key) { r.kind = 'manual'; r.amount = null; }
     scheduleSave(); return renderMonth();
   }
@@ -649,8 +697,13 @@ view.addEventListener('paste', (e) => {
   scheduleSave(); renderMonth(); focusRow(ctx.sec, ctx.i + lines.length - 1);
 });
 
+const toggleDonut = () => { donutDrill = !donutDrill; refresh(); };
+view.addEventListener('click', (e) => { if (e.target.closest('[data-drill="donut"]')) toggleDonut(); });
+view.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('[data-drill="donut"]')) { e.preventDefault(); toggleDonut(); } });
+
 $('#tabs').addEventListener('click', (e) => {
   const b = e.target.closest('[data-tab]'); if (!b) return;
+  donutDrill = false;
   tab = b.dataset.tab === 'summary' ? 'summary' : Number(b.dataset.tab);
   store.set('ledgy.tab', String(tab));
   render();
@@ -673,6 +726,8 @@ function askDialog({ title, text, ok = 'OK', cancel = 'Cancel', danger = false }
 }
 $('#msgDlg').addEventListener('click', (e) => { if (e.target === e.currentTarget) e.currentTarget.close(''); });
 
+// The list to rename or delete: a section of this month, or Groceries / Transit (marked base, edited through month.titles).
+const findSection = (key) => doc.months[tab].sections.find((s) => s.key === key) || (baseLists(doc.months[tab]).some((l) => l.key === key) ? { key, title: listInfo(key).title, group: 'needs', base: true } : null);
 let listEditing = null; // the list being edited in #listDlg, or null for a new one
 $('#listForm').addEventListener('submit', (e) => {
   if (e.submitter?.value === 'cancel') return;
@@ -682,7 +737,9 @@ $('#listForm').addEventListener('submit', (e) => {
   if (sumLists().some((l) => l.key !== listEditing?.key && l.title.toLowerCase() === title.toLowerCase())) {
     e.preventDefault(); askDialog({ title: 'Name already used', text: `${monthLabel(tab)} already has a list named “${title}”. Choose a different name.`, cancel: null }); return;
   }
-  if (listEditing) {
+  if (listEditing?.base) {
+    (m.titles ||= {})[listEditing.key] = title;
+  } else if (listEditing) {
     if (listEditing.group !== group) { // rows in the old column can no longer link to it
       for (const g of LINKABLE) for (const r of m[g]) if (r.kind === listEditing.key) { r.kind = 'manual'; r.amount = null; }
     }
