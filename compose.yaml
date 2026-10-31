@@ -27,7 +27,8 @@ services:
     ports:
       - "${HTTPS_PORT:-8443}:8443"   # TrueNAS uses 443 for its own web UI, so Ledgy uses 8443
     environment:
-      - LEDGY_HOST=${LEDGY_HOST:-localhost}   # The name or IP you type in the browser, e.g. nas.local or 192.168.1.20
+      - LEDGY_HOST=${LEDGY_HOST:-localhost}
+      - TAILSCALE_HOST=${TAILSCALE_HOST:-localhost}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data          # Holds the certificate authority, so keep this volume
