@@ -4,10 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Ledgy</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23415f91'/><path d='M9 22V14M16 22V9M23 22v-5' stroke='white' stroke-width='3.2' stroke-linecap='round'/></svg>">
-  <meta name="theme-color" content="#ededf4" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#1d2024" media="(prefers-color-scheme: dark)">
-  <link rel="stylesheet" href="/fonts/fonts.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%232563eb'/><path d='M9 22V14M16 22V9M23 22v-5' stroke='white' stroke-width='3.2' stroke-linecap='round'/></svg>">
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0f172a" media="(prefers-color-scheme: dark)">
   <link rel="stylesheet" href="/styles.css">
   <script src="/vendor/chart.umd.js"></script>
   <script type="module" src="/app.js"></script>
@@ -72,7 +71,7 @@
     <form method="dialog" id="listForm">
       <h2 id="listDlgTitle">New spending list</h2>
       <label class="tf"><input name="title" required maxlength="60" autocomplete="off" placeholder=" "><span>Name</span></label>
-      <fieldset>
+      <fieldset id="listGroup">
         <legend>Counts as</legend>
         <label class="check"><input type="radio" name="group" value="needs" checked> Need</label>
         <label class="check"><input type="radio" name="group" value="wants"> Want</label>
@@ -127,7 +126,7 @@
           <div id="seedChips" class="seeds"></div>
           <div id="seedCustom" class="seed-custom" hidden>
             <label class="slider"><span>Hue</span><input type="range" name="seedHue" min="0" max="360" step="1"></label>
-            <label class="slider"><span>Chroma</span><input type="range" name="seedChroma" min="0" max="120" step="1"></label>
+            <label class="slider"><span>Chroma</span><input type="range" name="seedChroma" min="0" max="0.2" step="0.005"></label>
             <label class="tf"><input name="seedHex" maxlength="7" autocomplete="off" placeholder=" "><span>Hex</span></label>
           </div>
         </div>

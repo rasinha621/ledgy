@@ -113,9 +113,8 @@ if (AUTH) {
 
   // Only the login page and what it needs are open. Everything else needs a session.
   const sameSite = (req) => req.get('x-ledgy') === '1' && (!req.get('sec-fetch-site') || req.get('sec-fetch-site') === 'same-origin');
-  const open = ['/styles.css', '/login.js', '/vendor-mcu.js'];
+  const open = ['/styles.css', '/login.js', '/seed.js'];
   app.get(open, express.static(path.join(here, 'public')));
-  app.use('/fonts', express.static(path.join(here, 'public/fonts')));
   app.get('/login', (req, res) => (hasSession(req) ? res.redirect('/') : res.sendFile(path.join(here, 'public/login.html'))));
   app.post('/login', express.json({ limit: '1kb' }), (req, res) => {
     if (!sameSite(req)) return res.status(403).json({ error: 'Cross-site request blocked.' });
@@ -198,6 +197,7 @@ app.post('/api/years/:year', (req, res) => {
       ...emptyMonth(),
       needs: last.needs.filter((r) => r.label || r.kind !== 'manual').map((r) => ({ label: r.label, kind: r.kind, amount: null })),
       savings: last.savings.map((r) => ({ ...r })),
+      removed: [...(last.removed || [])], titles: { ...last.titles },
     }));
   }
   res.status(201).json(saveYear(y, doc));
