@@ -1,8 +1,37 @@
 # Ledgy
 
-A self-hosted web app automatically handles all the annoying cacluations so you can just input your income and expenses and see where all your money is going. There one page for each month, a Summary page, and charts that show where the money went. By default ledgy follows the 50/30/20 budget rule but you can adjust these limits however you like, as well as set additional savings goasl, see progress towards annual IRA account limits, and customize the look and feel.
+A self-hosted web app that handles all the annoying calculations so you can just enter your income and expenses and see where your money is going. There is one page for each month, a Summary page, and charts that show where the money went. By default Ledgy follows the 50/30/20 budget rule, but you can adjust these limits however you like, set additional savings goals, see progress towards annual IRA limits, and customize the look and feel.
 
-If you want to audit everyuthing yourself you can also export everything as an excel sheet with the forumlas used to make sure everything is adding up correctly.
+If you want to audit everything yourself, you can also export everything as an Excel sheet with the formulas used, to make sure everything adds up correctly.
+
+## Quick start (your own computer, about 5 minutes)
+
+You need one free program: **Docker Desktop** (Mac, Windows, or Linux). Nothing else.
+
+1. **Install Docker Desktop** from <https://www.docker.com/products/docker-desktop/>, open it, and wait until it says it is running.
+2. **Get Ledgy.** Click the green **Code** button on this page, then **Download ZIP**, and unzip it. (If you use git: `git clone https://github.com/rasinha621/ledgy.git`.)
+3. **Choose a login.** In the unzipped `ledgy` folder, create a new text file named `.env` (a dot, then `env`, no `.txt`) with these two lines. Pick your own username and password:
+   ```
+   BASIC_AUTH_USER=me
+   BASIC_AUTH_PASS=choose-a-password
+   ```
+   (Running only on your own computer and don't want a login? Use `ALLOW_NO_AUTH=1` as the only line instead.)
+4. **Start it.** Open a terminal in that folder (Mac: right-click the folder, **New Terminal at Folder**. Windows: open the folder, type `cmd` in the address bar, press Enter) and run:
+   ```
+   docker compose up -d --build
+   ```
+   The first time takes a couple of minutes while it downloads and builds.
+5. **Open <http://localhost:3000>**, sign in, and click **New year** (or **Import** to bring in an `.xlsx` file).
+
+Your data is kept by Docker and survives restarts and updates. Use **Export** or **Settings → Download JSON backup** to keep your own copies.
+
+| To... | Run this in the same folder |
+|---|---|
+| Stop Ledgy | `docker compose down` |
+| Start it again | `docker compose up -d` |
+| Update after downloading a newer version | `docker compose up -d --build` |
+
+If port 3000 is already in use, add `HTTP_PORT=3001` to your `.env` file and open `http://localhost:3001` instead.
 
 ## Install with Dockge
 
