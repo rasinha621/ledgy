@@ -1,4 +1,4 @@
-FROM node:22-slim
+FROM node:26-slim
 ENV NODE_ENV=production PORT=3000 DATA_DIR=/data NODE_NO_WARNINGS=1
 WORKDIR /app
 COPY package.json package-lock.json ./
