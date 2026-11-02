@@ -149,7 +149,7 @@
   .row .calc { @apply rounded-md bg-soft px-2 py-2.5 text-right text-on-soft tabular-nums; }
   .row .pos { @apply text-[11px] text-faint; }
   .row .lbl::placeholder { opacity: 0; }
-  .row:hover .lbl::placeholder, .row .lbl:focus::placeholder { opacity: 1; }
+  .row:hover .lbl::placeholder, .row .lbl:focus::placeholder, .row.blank .lbl::placeholder { opacity: 1; }
   .icon-btn { @apply size-10 cursor-pointer rounded-full border-0 bg-transparent text-[13px] text-ink-2 opacity-0 hover:bg-over/10 hover:text-over max-sm:opacity-100; }
   .row:hover .icon-btn, .row:focus-within .icon-btn { opacity: 1; }
   .add { @apply mx-2 mt-2 mb-4 block h-10 w-[calc(100%-16px)] cursor-pointer rounded-lg border-0 bg-transparent px-3 text-sm font-medium text-accent transition-colors hover:bg-accent/10 active:bg-accent/15; }
@@ -290,3 +290,22 @@
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* No spinner arrows on the income entry fields */
+#setPanelIncome input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+#setPanelIncome input[type=number]::-webkit-inner-spin-button,
+#setPanelIncome input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+
+/* Spending rows: the amount box uses the same floating "Amount" label as the income fields */
+.row .tf input { height: 2.5rem; font-size: inherit; }
+.row .tf span { top: .5rem; font-size: inherit; }
+.row .tf input:focus + span { top: .5rem; background: none; color: var(--text-2); }
+.row .tf input:not(:placeholder-shown) + span { opacity: 0; }
+@media (max-width: 640px) { .row .tf input { height: 2rem; } .row .tf span { top: .25rem; } }
+:root[data-density="compact"] .row .tf span, :root[data-density="compact"] .row .tf input:focus + span { top: .25rem; }
+/* Spending entry outlines: boxed by default, "plain" only shows a box on focus */
+:root:not([data-entries="plain"]) .row input.lbl:not(:focus) { border-color: var(--line-strong); }
+:root[data-entries="plain"] .row .tf input:not(:focus) { border-color: transparent; }
+
+/* Summary totals: center every column so the gaps between values are even */
+.sum-table th, .sum-table td { text-align: center; }

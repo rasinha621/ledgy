@@ -90,6 +90,7 @@
       <h2>Settings for <span id="setYearLbl"></span></h2>
       <div class="set-tabs" role="tablist">
         <button type="button" class="set-tab" role="tab" id="setTabData" aria-controls="setPanelData" aria-selected="true" data-tab="data">Data</button>
+        <button type="button" class="set-tab" role="tab" id="setTabIncome" aria-controls="setPanelIncome" aria-selected="false" tabindex="-1" data-tab="income">Income</button>
         <button type="button" class="set-tab" role="tab" id="setTabCustom" aria-controls="setPanelCustom" aria-selected="false" tabindex="-1" data-tab="custom">Customization</button>
       </div>
       <div id="setPanelData" class="set-panel" role="tabpanel" aria-labelledby="setTabData">
@@ -104,10 +105,10 @@
       <fieldset>
         <legend>Miscellaneous</legend>
         <div class="grid3">
-          <label class="tf"><input type="number" step="any" name="needsExtra" placeholder=" "><span>Stipends $</span></label>
-          <label class="tf"><select name="stipendCategory" aria-label="Stipend category"><option value="needs">Need</option><option value="wants">Want</option><option value="savings">Savings</option></select><span>Stipend goes to</span></label>
           <label class="tf"><input type="number" step="any" name="rothStart" placeholder=" "><span>Roth start balance $</span></label>
+          <label class="tf sel"><select name="payPeriod" aria-label="Pay periods"><option value="monthly">Monthly</option><option value="bimonthly">Bimonthly</option></select><span>Pay periods</span></label>
         </div>
+        <div id="goalsBox" class="goals"></div>
       </fieldset>
       <fieldset>
         <legend>Annual contribution limits</legend>
@@ -126,6 +127,7 @@
         </div>
       </fieldset>
       </div>
+      <div id="setPanelIncome" class="set-panel" role="tabpanel" aria-labelledby="setTabIncome" hidden></div>
       <div id="setPanelCustom" class="set-panel" role="tabpanel" aria-labelledby="setTabCustom" hidden>
       <fieldset>
         <legend>Preferences (this browser)</legend>
@@ -133,6 +135,7 @@
           <label class="tf sel"><select name="theme"><option value="auto">Auto</option><option value="light">Light</option><option value="dark">Dark</option></select><span>Theme</span></label>
           <label class="tf sel"><select name="monthStyle"><option value="upper">JAN</option><option value="title">Jan</option><option value="num">MM/YY</option><option value="full">January</option></select><span>Month style</span></label>
           <label class="tf sel"><select name="density"><option value="normal">Normal</option><option value="compact">Compact</option></select><span>Density</span></label>
+          <label class="tf sel"><select name="entryStyle"><option value="boxed">Boxed</option><option value="plain">No boxes</option></select><span>Spending entries</span></label>
         </div>
         <div class="seed-group">
           <div class="muted">Theme color</div>
@@ -143,6 +146,11 @@
             <label class="tf"><input name="seedHex" maxlength="7" autocomplete="off" placeholder=" "><span>Hex</span></label>
           </div>
         </div>
+      </fieldset>
+      <fieldset>
+        <legend>Summary: savings columns</legend>
+        <div class="grid3" id="savingsColsBox"></div>
+        <p class="muted">Total Income, Wants, Needs and Savings are always shown.</p>
       </fieldset>
       </div>
       <div class="dlg-actions">
