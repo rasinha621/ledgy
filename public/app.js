@@ -883,8 +883,8 @@ function renderIncomePanel() {
   $('#setPanelIncome').innerHTML = incomeDraft.map((m, i) => `<fieldset>
     <legend>${esc(monthLabel(i))}</legend>
     ${Array.from({ length: cnt }, (_, p) => `<div class="grid3" style="grid-template-columns:repeat(2,1fr)">
-      ${field(`data-m="${i}" data-p="${p}" data-k="gross"`, m.pay[p].gross, 'Gross income')}
-      ${field(`data-m="${i}" data-p="${p}" data-k="taxes"`, m.pay[p].taxes, 'Taxes')}
+      ${field(`data-m="${i}" data-p="${p}" data-k="gross"`, m.pay[p].gross, `Paycheck ${p + 1} Gross`)}
+      ${field(`data-m="${i}" data-p="${p}" data-k="taxes"`, m.pay[p].taxes, `Paycheck ${p + 1} Taxes`)}
     </div>`).join('')}
     ${m.extras.map((x, j) => `<div class="grid3" style="grid-template-columns:1fr 1fr auto;align-items:center">
       ${field(`data-m="${i}" data-x="${j}" data-k="label"`, x.label, 'Extra income', 'text')}

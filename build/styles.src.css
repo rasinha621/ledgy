@@ -291,10 +291,14 @@
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
 
-/* No spinner arrows on the income entry fields */
-#setPanelIncome input[type=number] { -moz-appearance: textfield; appearance: textfield; }
-#setPanelIncome input[type=number]::-webkit-inner-spin-button,
-#setPanelIncome input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+/* No spinner arrows on the income and contribution-limit fields */
+#setPanelIncome input[type=number], input[name=limit401k], input[name=limitHsa], input[name=limitRoth] { -moz-appearance: textfield; appearance: textfield; }
+#setPanelIncome input[type=number]::-webkit-inner-spin-button, input[name=limit401k]::-webkit-inner-spin-button, input[name=limitHsa]::-webkit-inner-spin-button, input[name=limitRoth]::-webkit-inner-spin-button,
+#setPanelIncome input[type=number]::-webkit-outer-spin-button, input[name=limit401k]::-webkit-outer-spin-button, input[name=limitHsa]::-webkit-outer-spin-button, input[name=limitRoth]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+
+/* Scroll inside the rounded dialog so the scrollbar is clipped by its corners */
+#settingsDlg { overflow: hidden; }
+#settingsDlg form { max-height: calc(100dvh - 32px); overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--line, #cbd5e1) transparent; }
 
 /* Spending rows: the amount box uses the same floating "Amount" label as the income fields */
 .row .tf input { height: 2.5rem; font-size: inherit; }

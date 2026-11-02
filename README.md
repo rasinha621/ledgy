@@ -14,7 +14,7 @@ If you want to audit everyuthing yourself you can also export everything as an e
 2. In Dockge, click **Scan Stacks Folder** (in the menu at the top right). The `ledgy` stack shows in the list.
 3. Open the stack. If necessary, edit the port, `TZ`, `PUID`/`PGID`, or the login in the compose file.
 4. Click **Deploy**. Dockge builds the image from the `Dockerfile` and starts the container.
-5. Open `https://<server>:8443` (see **HTTPS** below for the one-time certificate step). Click **Import** and select your `.xlsx` file, or click **New year**.
+5. Open `http://<server>:3000`. Click **Import** and select your `.xlsx` file, or click **New year**.
 
 Without Dockge:
 ```
@@ -26,35 +26,20 @@ docker compose up -d --build
 
 | Setting | Default | What it does |
 |---|---|---|
-| `LEDGY_HOST` | `localhost` | The name or IP address you type in the browser, e.g. `nas.local` or `192.168.1.20`. The HTTPS certificate is made for it. |
-| `HTTPS_PORT` | `8443` | The HTTPS port on the server. (TrueNAS already uses 443.) |
+| `LEDGY_HOST` | `localhost` | The name or IP address you type in the browser, e.g. `nas.local` or `192.168.1.20`. |
+| `HTTP_PORT` | `3000` | The port on the server. |
 | `PUID` / `PGID` | `568` | The user and group that own the data. 568 is the TrueNAS `apps` user. |
 | `BASIC_AUTH_USER` / `BASIC_AUTH_PASS` | blank | The login, shown as a sign-in page (the session lasts 30 days; Settings has Sign out). **Required**: the app does not start without them unless `ALLOW_NO_AUTH=1`. After 10 wrong passwords, an address is locked out for 15 minutes. |
 | `ALLOW_NO_AUTH` | blank | Set to `1` to run without a login (only on a network you trust). The app then accepts only IP addresses and `localhost` in the URL, unless you set `ALLOWED_HOSTS`. |
 | `ALLOWED_HOSTS` | blank | Comma-separated host names that may be used to open the app, e.g. `ledgy.example.com,nas.local`. When set, other names are refused. |
-| `TRUST_PROXY` | `1` in compose | Compose already sets this, because Caddy is in front. Set it only if you run Ledgy without Compose behind your own proxy. |
+| `TRUST_PROXY` | blank | Set only if you run Ledgy behind your own reverse proxy. |
 | `ledgy-data` volume | | A named Docker volume with the SQLite database (`ledgy.db`). Use **Export** or **Settings → Download JSON backup** to keep copies. |
 
 To update after you change the files: in Dockge, click **Update** (or `docker compose up -d --build`).
 
-### HTTPS
-
-Caddy (see `Caddyfile`) makes a certificate with its own certificate authority, so you need no domain name.
-Set `LEDGY_HOST` in `.env` to what you type in the browser, then deploy. Your browser will warn about the certificate until
-you trust Caddy's root certificate once on each device:
-
-1. Copy the file from the Caddy container: `docker compose cp caddy:/data/caddy/pki/authorities/local/root.crt ./caddy-root.crt`
-2. Install it as a trusted root: on macOS, open it in Keychain Access, put it in **System**, and set **Always Trust**.
-   On Windows, import it into **Trusted Root Certification Authorities**. On iOS/Android, install it as a certificate profile
-   and enable it for trust. Firefox keeps its own list (Settings → Certificates → Authorities).
-
-Keep the `caddy-data` volume. If you delete it, Caddy makes a new certificate authority and each device needs the new file.
-If you have a real domain name, change `tls internal` in the `Caddyfile` to a Let's Encrypt setup for your DNS provider.
-
 ### Security
 
-- Ledgy itself serves plain HTTP. In `compose.yaml` it has no published port, and the Caddy container in front of it
-  provides HTTPS, so the login is encrypted. If you run `node server.js` yourself, put your own HTTPS proxy in front.
+- Ledgy serves plain HTTP, so the login is not encrypted on the network. This is fine on a trusted home network or over Tailscale (which encrypts traffic between your devices). For access from the open internet, put an HTTPS reverse proxy in front and set `TRUST_PROXY`.
 - Changes to data must come from the Ledgy page itself; requests from other websites are refused.
 - Styles are compiled Tailwind CSS served from the app (`public/styles.css`), so the page makes no requests to other sites. After changing classes or `build/styles.src.css`, run `npm run build:css`.
 - Imported `.xlsx` files are limited to 5 MB (20 MB unpacked).
