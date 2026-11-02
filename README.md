@@ -1,7 +1,8 @@
 # Ledgy
 
-A self-hosted web app that does the same calculations as the `dev_budget.xlsx` spreadsheet:
-one page for each month (JAN–DEC), a Summary page, and charts that show where the money went.
+A self-hosted web app automatically handles all the annoying cacluations so you can just input your income and expenses and see where all your money is going. There one page for each month, a Summary page, and charts that show where the money went. By default ledgy follows the 50/30/20 budget rule but you can adjust these limits however you like, as well as set additional savings goasl, see progress towards annual IRA account limits, and customize the look and feel.
+
+If you want to audit everyuthing yourself you can also export everything as an excel sheet with the forumlas used to make sure everything is adding up correctly.
 
 ## Install with Dockge
 
@@ -58,9 +59,6 @@ If you have a real domain name, change `tls internal` in the `Caddyfile` to a Le
 - Styles are compiled Tailwind CSS served from the app (`public/styles.css`), so the page makes no requests to other sites. After changing classes or `build/styles.src.css`, run `npm run build:css`.
 - Imported `.xlsx` files are limited to 5 MB (20 MB unpacked).
 
-## How it replicates the spreadsheet
-
-Each month has the same cells as the sheet. The small labels (M1, N3, A2…) show the cell that each value comes from.
 
 | Spreadsheet | App |
 |---|---|
@@ -75,13 +73,7 @@ Each month has the same cells as the sheet. The small labels (M1, N3, A2…) sho
 | Summary pie chart (`B2:E2`) | "Year breakdown" chart on the Summary page |
 
 The Summary reads Savings rows by position, as the spreadsheet does: row 1 = 401k (`I2`), row 2 = HSA (`I3`),
-row 3 = Roth (`I4`), row 4 = Cash (`I5`), row 5 = Investing (`I6`). The original spreadsheet had one bank savings row; existing years are upgraded to Cash plus an empty Investing row.
-
-Spreadsheet behavior that is kept by default (change it in **Settings**):
-- HSA and 401k totals add JAN–NOV only (DEC is not in the formula).
-- The pie chart on the Summary page shows Wants, Needs and Total Savings (Cash and Investing included).
-- Roth total starts from a fixed balance (`4808.49` in the imported file).
-- The budget percentages and the +$200 for Needs.
+row 3 = Roth (`I4`), row 4 = Cash (`I5`), row 5 = Investing (`I6`). 
 
 When the income is blank, the % cells show "—" (the spreadsheet shows `#DIV/0!`).
 Numbers are rounded for display the same way as Excel (`#,##0.00`).
@@ -101,3 +93,7 @@ Numbers are rounded for display the same way as Excel (`#,##0.00`).
 `npm test -- path/to/dev_budget.xlsx` imports the file and compares every formula cell
 (B1, C1, C2, F1, G1, G2, J1, K1, K2, M2, M3, N3, E7 for each month, and Summary A2:H2)
 with the values saved in the file. It then exports, imports again, and compares a second time.
+
+## Feedback
+
+I'm open to feedback!! Please let me know if there is something that doesn't seem intuitive, overly complex, repeated, or could just use improvement.

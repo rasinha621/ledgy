@@ -1,11 +1,9 @@
 import { syncIcon } from '/icon.js';
 import { hexToOklch, oklchToHex, isHex, applySeed } from '/seed.js';
-import { MONTHS, baseLists, calcMonth, calcSummary, needsRowValue, listRows, sumRows, n } from '/lib/calc.js';
+import { MONTHS, baseLists, calcMonth, calcSummary, needsRowValue, listRows, sumRows, n, round2, syncGoals } from '/lib/calc.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-// Round like Excel: use 15 significant digits first, then round half away from zero.
-const round2 = (v) => Math.sign(v) * Math.round(Number((Math.abs(v) * 100).toPrecision(15))) / 100;
 const fmt = (v) => (v === null || v === undefined ? '—' : (round2(v) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 const usd = (v) => (v === null || v === undefined ? '—' : (v < 0 ? '-$' : '$') + fmt(Math.abs(v)));
 const pct = (v) => (v === null || v === undefined ? '—' : `${(v * 100).toFixed(2)}%`);
@@ -48,10 +46,12 @@ const MONTH_STYLES = { upper: 'JAN', title: 'Jan', num: '01/26', full: 'January'
 // One seed color generates the accent, tinted surfaces and chart colors (see seed.js and the stylesheet).
 const SEED_PRESETS = ['#6750a4', '#006a6a', '#386a20', '#8b5000', '#a43b5c', '#006874'];
 const DEFAULT_SEED = '#2563eb';
+// Optional savings columns in the Summary's top table. The four totals are always shown.
+const SAV_COLS = ['Cash', 'Investing', 'Roth', 'HSA', '401k'];
 const loadPrefs = () => {
   let p = {};
   try { p = JSON.parse(store.get('ledgy.prefs') || '{}') || {}; } catch { /* ignore bad JSON */ }
-  return { theme: ['light', 'dark'].includes(p.theme) ? p.theme : 'auto', density: p.density === 'compact' ? 'compact' : 'normal', monthStyle: MONTH_STYLES[p.monthStyle] ? p.monthStyle : 'upper', seed: isHex(p.seed) ? p.seed.toLowerCase() : null };
+  return { theme: ['light', 'dark'].includes(p.theme) ? p.theme : 'auto', density: p.density === 'compact' ? 'compact' : 'normal', monthStyle: MONTH_STYLES[p.monthStyle] ? p.monthStyle : 'upper', entryStyle: p.entryStyle === 'plain' ? 'plain' : 'boxed', savingsCols: Array.isArray(p.savingsCols) ? [...SAV_COLS.filter((k) => p.savingsCols.includes(k)), ...p.savingsCols.filter((k) => /^goal:[a-z0-9]{1,16}$/.test(k))] : [], seed: isHex(p.seed) ? p.seed.toLowerCase() : null };
 };
 let prefs = loadPrefs();
 const monthLabel = (i) => {
@@ -63,6 +63,7 @@ function applyPrefs(p = prefs) {
   const root = document.documentElement;
   if (p.theme === 'auto') root.removeAttribute('data-theme'); else root.dataset.theme = p.theme;
   if (p.density === 'compact') root.dataset.density = 'compact'; else root.removeAttribute('data-density');
+  if (p.entryStyle === 'plain') root.dataset.entries = 'plain'; else root.removeAttribute('data-entries');
   applySeed(root, p.seed);
   syncIcon();
 }
@@ -154,12 +155,12 @@ function arith(s) {
 function parseAmount(raw) {
   let s = String(raw).trim().replace(/[$,\s]/g, '');
   if (!s) return { ok: true, v: null };
-  if (/^[-+]?(\d+\.?\d*|\.\d+)$/.test(s)) return { ok: true, v: Number(s) };
+  if (/^[-+]?(\d+\.?\d*|\.\d+)$/.test(s)) return { ok: true, v: round2(Number(s)) };
   if (s.startsWith('=')) s = s.slice(1);
   if (!/^[-+*/().\d]+$/.test(s)) return { ok: false };
   try {
     const v = arith(s);
-    return Number.isFinite(v) ? { ok: true, v: Math.round(v * 1e10) / 1e10 } : { ok: false };
+    return Number.isFinite(v) ? { ok: true, v: round2(v) } : { ok: false };
   } catch { return { ok: false }; }
 }
 const amtText = (v) => (v === null || v === undefined ? '' : String(v));
@@ -221,8 +222,9 @@ function rowHtml(sec, r, i, month) {
   const val = link ? fmt(needsRowValue(r, month)) : esc(amtShow(r.amount));
   const sum = sec === 'savings' && i < SUMMARY_SAVINGS.length ? `Summary: ${SUMMARY_SAVINGS[i]}. ` : '';
   const hint = LINKABLE.includes(sec) ? ` title="${sum}${link ? `Total of ${esc(link.title)}. Type a number to unlink.` : 'Type an amount, or pick a list to total'}"` : '';
-  return `<li class="row" data-i="${i}">
-    <input class="amt ${n(r.amount) < 0 ? 'neg' : ''} ${link ? 'linked' : ''}" data-i="${i}" inputmode="decimal" autocomplete="off" value="${val}" aria-label="Amount"${hint}>
+  const blank = !link && (r.amount === null || r.amount === undefined) && !r.label;
+  return `<li class="row${blank ? ' blank' : ''}" data-i="${i}">
+    <label class="tf"><input class="amt ${n(r.amount) < 0 ? 'neg' : ''} ${link ? 'linked' : ''}" data-i="${i}" inputmode="decimal" autocomplete="off" value="${val}" placeholder=" " aria-label="Amount"${hint}><span>Amount</span></label>
     <input class="lbl" data-i="${i}" value="${esc(r.label)}" placeholder="${link ? `Σ ${esc(link.title)}` : secMeta(sec).ph}" aria-label="${secMeta(sec).ph}">
     <button class="icon-btn del" data-i="${i}" aria-label="Delete row" title="Delete row">✕</button>
   </li>`;
@@ -230,11 +232,12 @@ function rowHtml(sec, r, i, month) {
 
 function cardHtml(sec, month) {
   const rows = rowsOf(month, sec);
+  if (!rows.length) rows.push(newRow(sec)); // an empty category always has one row ready for input
   const meta = secMeta(sec);
   const custom = !['wants', 'needs', 'savings'].includes(sec); // lists that can be renamed or deleted
   const budgeted = ['wants', 'needs', 'savings'].includes(sec);
   const sub = budgeted
-    ? `<div class="card-sub"><span><span data-k="${sec}Budget"></span> <span data-k="${sec}Stipend"></span></span><span data-k="${sec}Pct"></span></div>
+    ? `<div class="card-sub"><span><span data-k="${sec}Budget"></span></span><span data-k="${sec}Pct"></span></div>
        <div class="meter" data-meter="${sec}"><span style="background:var(${meta.color})"></span></div>`
     : `<div class="feeds" data-feeds="${sec}"></div>`;
   const foot = sec === 'savings' ? '<div class="feeds" style="padding:0 14px 10px"></div>' : '';
@@ -255,7 +258,7 @@ function renderMonth() {
   const m = doc.months[tab];
   $('#view').innerHTML = `
     <div class="kpis"><div class="kpis-main">
-      <div class="kpi"><div class="k">Income </div><input class="v" id="income" inputmode="decimal" value="${esc(amtShow(m.income))}" placeholder="0.00" aria-label="Income"></div>
+      <div class="kpi" role="button" tabindex="0" data-act="open-income" style="cursor:pointer" title="Edit income in Settings"><div class="k">Net income </div><div class="v">${usd(m.income)}</div></div>
       <div class="kpi"><div class="k">Allocated </div><div class="v" data-k="allocated"></div></div>
       <div class="kpi"><div class="k">Percentage spent </div><div class="v" data-k="allocatedPct"></div></div>
       </div>
@@ -290,9 +293,7 @@ function refresh() {
     el.textContent = text; el.classList.toggle('neg', !!neg);
   });
   for (const s of ['wants', 'needs', 'savings']) {
-    const hasStipend = c.stipend && c.stipendCategory === s;
-    set(`${s}Budget`, `$${fmt(c[`${s}Budget`] - (hasStipend ? c.stipend : 0))}`);
-    set(`${s}Stipend`, hasStipend ? `+ $${fmt(c.stipend)} stipend` : '');
+    set(`${s}Budget`, `$${fmt(c[`${s}Budget`])}`);
     set(`${s}Total`, `$${fmt(c[`${s}Total`])} spent`);
     const p = c[`${s}Pct`];
     const el = $(`[data-k="${s}Pct"]`);
@@ -311,7 +312,7 @@ function refresh() {
     if (el !== document.activeElement && LINKABLE.includes(sec)) el.value = fmt(needsRowValue(m[sec][Number(el.dataset.i)], m));
   });
   set('allocated', fmt(c.allocated));
-  set('allocatedPct', c.allocatedPct === null ? '#DIV/0!' : pct(c.allocatedPct));
+  set('allocatedPct', c.allocatedPct === null ? '-' : pct(c.allocatedPct));
   set('remaining', fmt(c.remaining), c.remaining < -0.005);
   updateMonthCharts(m, c);
   renderTabs();
@@ -437,7 +438,9 @@ function renderSummary() {
     ['Total income', s.totalIncome], ['Total Wants', s.totalWants], ['Total Needs', s.totalNeeds],
     ['Total Savings', s.totalSavings], ['Cash', s.cashSavings], ['Investing', s.investingSavings],
     ['Roth', s.roth, doc.settings.limitRoth], ['HSA', s.hsa, doc.settings.limitHsa], ['401k', s.k401, doc.settings.limit401k],
-  ];
+  ].filter(([h], i) => i < 4 || prefs.savingsCols.includes(h));
+  const goalCols = (s.goals || []).filter((g) => prefs.savingsCols.includes(`goal:${g.id}`)).map((g) => [g.name, g.total, g.target, true]);
+  cols.push(...goalCols);
   const rows = s.months.map((c, i) => `<tr data-goto="${i}" style="cursor:pointer">
       <td>${monthLabel(i)}</td><td>${c.hasIncome ? fmt(c.income) : '—'}</td>
       <td>${fmt(c.wantsTotal)}</td><td class="${c.wantsPct > 1 ? 'over' : ''}">${pct(c.wantsPct)}</td>
@@ -445,10 +448,11 @@ function renderSummary() {
       <td>${fmt(c.savingsTotal)}</td><td>${pct(c.savingsPct)}</td>
       <td>${fmt(c.allocated)}</td><td class="${c.remaining < -0.005 ? 'over' : ''}">${fmt(c.remaining)}</td></tr>`).join('');
   $('#view').innerHTML = `
-    <section class="card"><div class="table-wrap"><table class="sum-table">
-      <thead><tr>${cols.map(([h]) => `<th>${h}</th>`).join('')}</tr></thead>
-      <tbody><tr>${cols.map(([, v, limit]) => {
+    <section class="card"><div class="table-wrap"><table class="sum-table" style="table-layout:fixed;min-width:${cols.length * 8}rem">
+      <thead><tr>${cols.map(([h]) => `<th>${esc(h)}</th>`).join('')}</tr></thead>
+      <tbody><tr>${cols.map(([, v, limit, goal]) => {
         if (!(limit > 0)) return `<td>${usd(v)}</td>`;
+        if (goal) return v >= limit - 0.005 ? `<td class="met" title="Goal met">${usd(v)}</td>` : `<td title="Goal ${esc(usd(limit))}">${usd(v)}</td>`;
         if (v > limit + 0.005) return `<td class="over" title="Over the ${esc(usd(limit))} limit">${usd(v)}</td>`;
         if (v >= limit - 0.005) return `<td class="met" title="Annual limit met">${usd(v)}</td>`;
         return `<td title="Limit ${esc(usd(limit))}">${usd(v)}</td>`;
@@ -551,11 +555,6 @@ function focusRow(sec, i, cls = 'amt') {
 
 view.addEventListener('input', (e) => {
   const t = e.target;
-  if (t.id === 'income') {
-    const p = parseAmount(t.value);
-    if (!p.ok) return;
-    doc.months[tab].income = p.v; refresh(); scheduleSave(); return;
-  }
   const ctx = rowCtx(t); if (!ctx) return;
   const row = ctx.rows[ctx.i];
   if (t.classList.contains('amt')) {
@@ -663,18 +662,18 @@ view.addEventListener('keydown', (e) => {
 });
 
 // Show raw numbers while editing and formatted numbers (1,234.50) otherwise.
-const modelValue = (t) => { const ctx = rowCtx(t); return ctx ? ctx.rows[ctx.i].amount : doc.months[tab].income; };
+const modelValue = (t) => { const ctx = rowCtx(t); return ctx ? ctx.rows[ctx.i].amount : null; };
 const linkedList = (t) => { const ctx = rowCtx(t); const k = LINKABLE.includes(ctx?.sec) ? ctx.rows[ctx.i].kind : 'manual'; return k && k !== 'manual' ? listInfo(k) : null; };
 view.addEventListener('focusin', (e) => {
   const t = e.target;
-  if (t.classList.contains('amt') || t.id === 'income') {
+  if (t.classList.contains('amt')) {
     t.value = linkedList(t)?.title ?? amtText(modelValue(t)); t.select();
     if (LINKABLE.includes(rowCtx(t)?.sec)) showPop(t);
   }
 });
 view.addEventListener('focusout', (e) => {
   const t = e.target;
-  if (!(t.classList.contains('amt') || t.id === 'income') || !t.isConnected || tab === 'summary') return;
+  if (!(t.classList.contains('amt')) || !t.isConnected || tab === 'summary') return;
   t.style.color = ''; hidePop();
   const link = linkedList(t);
   t.value = link ? fmt(needsRowValue(rowCtx(t).rows[rowCtx(t).i], doc.months[tab])) : amtShow(modelValue(t));
@@ -816,7 +815,7 @@ function syncSeedSliders() {
   f.seedHue.value = Math.round(h); f.seedChroma.value = Math.min(c, 0.2).toFixed(3); f.seedHex.value = draftSeed || DEFAULT_SEED;
   f.seedHue.style.setProperty('--track', hueTrack()); f.seedChroma.style.setProperty('--track', chromaTrack(Math.round(h)));
 }
-function previewDraft() { const f = $('#settingsForm'); applyPrefs({ ...prefs, theme: f.theme.value, density: f.density.value, seed: draftSeed }); }
+function previewDraft() { const f = $('#settingsForm'); applyPrefs({ ...prefs, theme: f.theme.value, density: f.density.value, entryStyle: f.entryStyle.value, seed: draftSeed }); }
 $('#seedChips').addEventListener('click', (e) => {
   const b = e.target.closest('[data-seed]'); if (!b) return;
   if (b.dataset.seed === 'custom') { seedPanelOpen = !seedPanelOpen; if (!draftSeed) draftSeed = DEFAULT_SEED; syncSeedSliders(); } else { draftSeed = b.dataset.seed || null; seedPanelOpen = false; }
@@ -838,6 +837,7 @@ $('#seedCustom').addEventListener('input', (e) => {
 });
 $('#settingsForm').theme.addEventListener('change', previewDraft);
 $('#settingsForm').density.addEventListener('change', previewDraft);
+$('#settingsForm').entryStyle.addEventListener('change', previewDraft);
 // Cancel, Escape or Save: drop the live preview and use the saved preferences.
 fetch('/api/auth').then((r) => { $('#signOutBtn').hidden = !r.ok; }).catch(() => {});
 $('#signOutBtn').addEventListener('click', async () => {
@@ -847,30 +847,98 @@ $('#signOutBtn').addEventListener('click', async () => {
 $('#settingsDlg').addEventListener('close', () => { applyPrefs(); });
 function showSettingsTab(name) {
   document.querySelectorAll('.set-tab').forEach((t) => { const on = t.dataset.tab === name; t.setAttribute('aria-selected', on); t.tabIndex = on ? 0 : -1; });
-  $('#setPanelData').hidden = name !== 'data'; $('#setPanelCustom').hidden = name !== 'custom';
+  $('#setPanelData').hidden = name !== 'data'; $('#setPanelCustom').hidden = name !== 'custom'; $('#setPanelIncome').hidden = name !== 'income';
 }
+// Savings goals live in the Misc box; each one also becomes an optional Summary column.
+let goalsDraft = []; let colDraft = new Set();
+function renderGoals() {
+  $('#goalsBox').innerHTML = goalsDraft.map((g, i) => `<div class="grid3" style="grid-template-columns:1fr 1fr auto;align-items:center;margin-top:12px">
+    <label class="tf"><input type="text" maxlength="60" autocomplete="off" data-goal="${i}" data-k="name" value="${esc(g.name)}" placeholder=" "><span>Savings goal</span></label>
+    <label class="tf"><input type="number" step="any" min="0" data-goal="${i}" data-k="target" value="${esc(g.target ?? '')}" placeholder=" "><span>Target $</span></label>
+    <button type="button" class="btn ghost" data-rm-goal="${i}" aria-label="Remove savings goal">Remove</button>
+  </div>`).join('') + '<div style="margin-top:12px"><button type="button" class="btn" id="addGoalBtn">+ Add savings goal</button></div>';
+}
+function renderSavingsCols() {
+  const box = (key, label) => `<label class="check"><input type="checkbox" data-col="${esc(key)}" ${colDraft.has(key) ? 'checked' : ''}> ${esc(label)}</label>`;
+  $('#savingsColsBox').innerHTML = SAV_COLS.map((k) => box(k, k)).join('') + goalsDraft.filter((g) => g.name.trim()).map((g) => box(`goal:${g.id}`, g.name.trim())).join('');
+}
+$('#goalsBox').addEventListener('input', (e) => {
+  const t = e.target; const g = goalsDraft[t.dataset.goal]; if (!g) return;
+  if (t.dataset.k === 'name') { g.name = t.value; } else g.target = t.value === '' ? null : Number(t.value);
+});
+$('#goalsBox').addEventListener('change', renderSavingsCols);
+$('#goalsBox').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.id === 'addGoalBtn') { goalsDraft.push({ id: `g${Math.random().toString(36).slice(2, 8)}`, name: '', target: null }); renderGoals(); renderSavingsCols(); $('#goalsBox').querySelector(`input[data-goal="${goalsDraft.length - 1}"][data-k="name"]`).focus(); }
+  else if (b.dataset.rmGoal !== undefined) { const [g] = goalsDraft.splice(Number(b.dataset.rmGoal), 1); colDraft.delete(`goal:${g.id}`); renderGoals(); renderSavingsCols(); }
+});
+$('#savingsColsBox').addEventListener('change', (e) => { const c = e.target.dataset.col; if (!c) return; if (e.target.checked) colDraft.add(c); else colDraft.delete(c); });
+
+// One section per month. Pay rows (one, or two when bimonthly) plus ad hoc extras are edited in a draft and applied on save.
+let incomeDraft = []; let draftPay = 'monthly';
+const payCount = (mode = draftPay) => (mode === 'bimonthly' ? 2 : 1);
+function renderIncomePanel() {
+  const cnt = payCount();
+  const field = (attrs, val, label, type = 'number') => `<label class="tf"><input type="${type}" ${type === 'number' ? 'step="any" min="0"' : 'maxlength="60" autocomplete="off"'} ${attrs} value="${esc(val ?? '')}" placeholder=" "><span>${label}</span></label>`;
+  $('#setPanelIncome').innerHTML = incomeDraft.map((m, i) => `<fieldset>
+    <legend>${esc(monthLabel(i))}</legend>
+    ${Array.from({ length: cnt }, (_, p) => `<div class="grid3" style="grid-template-columns:repeat(2,1fr)">
+      ${field(`data-m="${i}" data-p="${p}" data-k="gross"`, m.pay[p].gross, 'Gross income')}
+      ${field(`data-m="${i}" data-p="${p}" data-k="taxes"`, m.pay[p].taxes, 'Taxes')}
+    </div>`).join('')}
+    ${m.extras.map((x, j) => `<div class="grid3" style="grid-template-columns:1fr 1fr auto;align-items:center">
+      ${field(`data-m="${i}" data-x="${j}" data-k="label"`, x.label, 'Extra income', 'text')}
+      ${field(`data-m="${i}" data-x="${j}" data-k="amount"`, x.amount, 'Amount')}
+      <button type="button" class="btn ghost" data-rm-m="${i}" data-rm-x="${j}" aria-label="Remove extra income">Remove</button>
+    </div>`).join('')}
+    <div><button type="button" class="btn" data-add-extra="${i}">+ Add extra income</button></div>
+  </fieldset>`).join('');
+}
+$('#setPanelIncome').addEventListener('input', (e) => {
+  const t = e.target; const m = incomeDraft[t.dataset.m]; if (!m) return;
+  const v = t.dataset.k === 'label' ? t.value : (t.value === '' ? null : Number(t.value));
+  if (t.dataset.x !== undefined) m.extras[t.dataset.x][t.dataset.k] = v; else m.pay[t.dataset.p][t.dataset.k] = v;
+});
+$('#setPanelIncome').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.addExtra !== undefined) incomeDraft[b.dataset.addExtra].extras.push({ label: '', amount: null });
+  else if (b.dataset.rmM !== undefined) incomeDraft[b.dataset.rmM].extras.splice(Number(b.dataset.rmX), 1);
+  else return;
+  renderIncomePanel();
+  if (b.dataset.addExtra !== undefined) [...$('#setPanelIncome').querySelectorAll(`input[data-m="${b.dataset.addExtra}"][data-k="label"]`)].pop()?.focus();
+});
+$('#settingsForm').payPeriod.addEventListener('change', (e) => { draftPay = e.target.value; renderIncomePanel(); });
 document.querySelector('.set-tabs').addEventListener('click', (e) => { const t = e.target.closest('.set-tab'); if (t) showSettingsTab(t.dataset.tab); });
 document.querySelector('.set-tabs').addEventListener('keydown', (e) => {
   if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
-  const next = document.querySelector('.set-tab[aria-selected="false"]'); showSettingsTab(next.dataset.tab); next.focus();
+  const tabs = [...document.querySelectorAll('.set-tab')];
+  const cur = tabs.findIndex((t) => t.getAttribute('aria-selected') === 'true');
+  const next = tabs[(cur + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length]; showSettingsTab(next.dataset.tab); next.focus();
 });
-$('#settingsForm').needsExtra.addEventListener('input', (e) => { e.target.form.stipendCategory.disabled = !Number(e.target.value); });
-$('#settingsBtn').addEventListener('click', () => {
-  showSettingsTab('data');
+$('#settingsBtn').addEventListener('click', () => openSettings());
+view.addEventListener('click', (e) => { if (e.target.closest('[data-act="open-income"]')) openSettings('income'); });
+view.addEventListener('keydown', (e) => {
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.dataset?.act === 'open-income') { e.preventDefault(); openSettings('income'); }
+});
+function openSettings(tabName = 'data') {
+  showSettingsTab(tabName);
   const f = $('#settingsForm'); const s = doc.settings;
   $('#setYearLbl').textContent = doc.year;
   f.wantsRate.value = +(s.wantsRate * 100).toFixed(6);
   f.needsRate.value = +(s.needsRate * 100).toFixed(6);
   f.savingsRate.value = +(s.savingsRate * 100).toFixed(6);
-  f.needsExtra.value = s.needsExtra; f.rothStart.value = s.rothStart;
-  f.stipendCategory.value = s.stipendCategory || 'needs'; f.stipendCategory.disabled = !s.needsExtra;
+  f.rothStart.value = s.rothStart;
   f.limit401k.value = s.limit401k || 0; f.limitHsa.value = s.limitHsa || 0; f.limitRoth.value = s.limitRoth || 0;
   $('#backupLink').href = `/api/years/${doc.year}/backup.json`;
-  f.theme.value = prefs.theme; f.density.value = prefs.density; f.monthStyle.value = prefs.monthStyle;
+  f.theme.value = prefs.theme; f.density.value = prefs.density; f.monthStyle.value = prefs.monthStyle; f.entryStyle.value = prefs.entryStyle;
+  goalsDraft = (s.goals || []).map((g) => ({ ...g })); colDraft = new Set(prefs.savingsCols);
+  renderGoals(); renderSavingsCols();
   draftSeed = prefs.seed; seedPanelOpen = false;
-  renderSeedPicker();
+  draftPay = s.payPeriod || 'monthly'; f.payPeriod.value = draftPay;
+  incomeDraft = doc.months.map((m) => ({ pay: [0, 1].map((p) => ({ gross: m.pay?.[p]?.gross ?? null, taxes: m.pay?.[p]?.taxes ?? null })), extras: (m.extras || []).map((x) => ({ ...x })) }));
+  renderSeedPicker(); renderIncomePanel();
   $('#settingsDlg').showModal();
-});
+}
 $('#settingsForm').addEventListener('submit', (e) => {
   if (e.submitter?.value === 'cancel') return;
   const f = e.target; const num = (v, d) => (v === '' || !Number.isFinite(Number(v)) ? d : Number(v));
@@ -880,12 +948,25 @@ $('#settingsForm').addEventListener('submit', (e) => {
     wantsRate: num(f.wantsRate.value, s.wantsRate * 100) / 100,
     needsRate: num(f.needsRate.value, s.needsRate * 100) / 100,
     savingsRate: num(f.savingsRate.value, s.savingsRate * 100) / 100,
-    needsExtra: num(f.needsExtra.value, s.needsExtra), rothStart: num(f.rothStart.value, s.rothStart),
-    stipendCategory: f.stipendCategory.value,
+    rothStart: num(f.rothStart.value, s.rothStart),
+    payPeriod: f.payPeriod.value,
+    goals: goalsDraft.map((g) => ({ id: g.id, name: g.name.trim(), target: Math.max(0, Number.isFinite(g.target) ? round2(g.target) : 0) })).filter((g) => g.name),
     limit401k: Math.max(0, num(f.limit401k.value, s.limit401k || 0)), limitHsa: Math.max(0, num(f.limitHsa.value, s.limitHsa || 0)),
     limitRoth: Math.max(0, num(f.limitRoth.value, s.limitRoth || 0)),
   };
-  prefs = { theme: f.theme.value, density: f.density.value, monthStyle: f.monthStyle.value, seed: draftSeed };
+  syncGoals(doc);
+  const cnt = payCount(f.payPeriod.value);
+  doc.months.forEach((m, i) => {
+    const d = incomeDraft[i]; const r = (v) => (v === null || !Number.isFinite(v) ? null : round2(v));
+    const had = (m.pay || []).some((p) => p.gross !== null || p.taxes !== null) || (m.extras || []).some((x) => x.amount !== null);
+    m.pay = d.pay.map((p) => ({ gross: r(p.gross), taxes: r(p.taxes) }));
+    m.extras = d.extras.map((x) => ({ label: x.label.trim(), amount: r(x.amount) })).filter((x) => x.label || x.amount !== null);
+    const used = m.pay.slice(0, cnt);
+    if (used.some((p) => p.gross !== null || p.taxes !== null) || m.extras.some((x) => x.amount !== null)) {
+      m.income = round2(used.reduce((t, p) => t + (p.gross || 0) - (p.taxes || 0), 0) + m.extras.reduce((t, x) => t + (x.amount || 0), 0));
+    } else if (had) m.income = null; // everything was cleared
+  });
+  prefs = { theme: f.theme.value, density: f.density.value, monthStyle: f.monthStyle.value, entryStyle: f.entryStyle.value, savingsCols: [...colDraft].filter((k) => SAV_COLS.includes(k) || doc.settings.goals.some((g) => `goal:${g.id}` === k)), seed: draftSeed };
   store.set('ledgy.prefs', JSON.stringify(prefs)); applyPrefs();
   scheduleSave(); render();
 });
