@@ -22,6 +22,7 @@
       <span id="saveState" class="save-state" aria-live="polite"></span>
       <button id="newYearBtn" class="btn ghost">New year</button>
       <button id="settingsBtn" class="btn ghost" aria-label="Settings">Settings</button>
+      <button type="button" id="signOutBtn" class="btn ghost" hidden>Sign out</button>
     </div>
   </header>
 
@@ -89,7 +90,7 @@
     <form method="dialog" id="settingsForm">
       <h2>Settings for <span id="setYearLbl"></span></h2>
       <div class="set-tabs" role="tablist">
-        <button type="button" class="set-tab" role="tab" id="setTabData" aria-controls="setPanelData" aria-selected="true" data-tab="data">Data</button>
+        <button type="button" class="set-tab" role="tab" id="setTabData" aria-controls="setPanelData" aria-selected="true" data-tab="data">General</button>
         <button type="button" class="set-tab" role="tab" id="setTabIncome" aria-controls="setPanelIncome" aria-selected="false" tabindex="-1" data-tab="income">Income</button>
         <button type="button" class="set-tab" role="tab" id="setTabCustom" aria-controls="setPanelCustom" aria-selected="false" tabindex="-1" data-tab="custom">Customization</button>
       </div>
@@ -158,7 +159,6 @@
         <span class="spacer"></span>
         <button value="cancel" class="btn ghost" formnovalidate>Cancel</button>
         <button class="btn primary" value="default">Save</button>
-        <button type="button" id="signOutBtn" class="btn" hidden>Sign out</button>
       </div>
     </form>
   </dialog>
