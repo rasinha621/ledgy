@@ -1,6 +1,6 @@
 import { syncIcon } from '/icon.js';
 import { hexToOklch, oklchToHex, isHex, applySeed } from '/seed.js';
-import { MONTHS, baseLists, calcMonth, calcSummary, needsRowValue, listRows, sumRows, n, round2, syncGoals } from '/lib/calc.js';
+import { MONTHS, baseLists, calcDrawdown, calcMonth, calcSummary, needsRowValue, listRows, sumRows, n, round2, syncGoals } from '/lib/calc.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -38,7 +38,7 @@ function savingsBreakdown(months) {
   const colors = savingsShades(items.length);
   return items.map((l, i) => ({ ...l, color: l.value < 0 ? cssVar('--over') : colors[i] }));
 }
-let donutDrill = false; let pieDrill = false;
+let donutDrill = false; let pieDrill = false; let hideTaxes = false;
 
 /* ---------- Preferences (per browser) ---------- */
 const FULL_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -210,10 +210,11 @@ function emptyState() {
 }
 
 function renderTabs() {
-  const sums = doc.months.map((m) => calcMonth(m, doc.settings));
+  const draw = calcDrawdown(doc);
   $('#tabs').innerHTML = MONTHS.map((_, i) => {
-    const over = sums[i].hasIncome && sums[i].remaining < -0.005;
-    return `<button class="tab" role="tab" data-tab="${i}" aria-selected="${tab === i}" title="${over ? 'Over income' : ''}">${monthLabel(i)}${over ? '<span class="dot" aria-label="over income"></span>' : ''}</button>`;
+    const { over, covered } = draw[i];
+    const note = covered ? 'Over income, covered by savings' : over ? 'Over income' : '';
+    return `<button class="tab" role="tab" data-tab="${i}" aria-selected="${tab === i}" title="${note}">${monthLabel(i)}${over ? `<span class="dot${covered ? ' warn' : ''}" aria-label="${note.toLowerCase()}"></span>` : ''}</button>`;
   }).join('') + `<button class="tab sum" role="tab" data-tab="summary" aria-selected="${tab === 'summary'}">Summary</button>`;
 }
 
@@ -312,8 +313,10 @@ function refresh() {
     if (el !== document.activeElement && LINKABLE.includes(sec)) el.value = fmt(needsRowValue(m[sec][Number(el.dataset.i)], m));
   });
   set('allocated', fmt(c.allocated));
-  set('allocatedPct', c.allocatedPct === null ? '-' : pct(c.allocatedPct));
-  set('remaining', fmt(c.remaining), c.remaining < -0.005);
+  set('allocatedPct', c.allocatedPct === null ? '—' : pct(c.allocatedPct));
+  const covered = calcDrawdown(doc)[tab].covered;
+  set('remaining', fmt(c.remaining), c.remaining < -0.005 && !covered);
+  document.querySelectorAll('[data-k="remaining"]').forEach((el) => el.classList.toggle('warn', covered));
   updateMonthCharts(m, c);
   renderTabs();
 }
@@ -358,6 +361,7 @@ const centerText = {
 
 function donutData(c) {
   const parts = [
+    ...(c.taxes > 0 ? [{ label: 'Taxes', value: c.taxes, color: cssVar('--muted') }] : []),
     { label: 'Wants', value: c.wantsTotal, color: cssVar('--wants') },
     { label: 'Needs', value: c.needsTotal, color: cssVar('--needs') },
     { label: 'Savings', value: c.savingsTotal, color: cssVar('--savings') },
@@ -402,21 +406,23 @@ function updateMonthCharts(m, c) {
   const sav = savingsBreakdown([m]);
   if (!sav.length) donutDrill = false;
   const parts = donutDrill ? sav.map((l) => ({ label: l.label, value: l.value, color: l.color })) : donutData(c);
-  const shown = parts.map((p) => Math.max(0, p.value));
+  const taxesOff = hideTaxes && !donutDrill && c.taxes > 0;
+  const shown = parts.map((p) => (taxesOff && p.label === 'Taxes' ? 0 : Math.max(0, p.value)));
   const ds = charts.donut.data.datasets[0];
   charts.donut.data.labels = parts.map((p) => p.label);
   ds.data = shown; ds.backgroundColor = parts.map((p) => p.color);
-  const base = donutDrill ? c.savingsTotal : c.hasIncome && c.income > 0 ? c.income : shown.reduce((a, b) => a + b, 0);
-  charts.donut.options.plugins.centerText.lines = donutDrill ? ['Savings', usd(c.savingsTotal)] : ['Allocated', usd(c.allocated)];
+  const gross = taxesOff ? c.gross - c.taxes : c.gross;
+  const base = donutDrill ? c.savingsTotal : c.hasIncome && gross > 0 ? gross : shown.reduce((a, b) => a + b, 0);
+  charts.donut.options.plugins.centerText.lines = donutDrill ? ['Savings', usd(c.savingsTotal)] : [taxesOff ? 'Income after taxes' : 'Gross income', usd(gross)];
   charts.donut.update();
   if (donutDrill) $('#donutSub').innerHTML = '<button type="button" class="btn ghost" data-drill="donut">← All categories</button>';
   else {
     $('#donutSub').textContent = c.hasIncome
-      ? (c.remaining < -0.005 ? `Over income by ${usd(-c.remaining)}.` : `Share of income ${usd(c.income)}.`)
+      ? (c.remaining < -0.005 ? `Over income by ${usd(-c.remaining)}.` : `Share of ${taxesOff ? 'income after taxes' : 'gross income'} ${usd(gross)}.`)
       : 'No income entered. Shares are of the total allocated.';
     if (sav.length) $('#donutSub').append(' Click Savings for its breakdown.');
   }
-  $('#donutLegend').innerHTML = parts.map((p) => `<div${!donutDrill && p.label === 'Savings' && sav.length ? ' class="drillable" data-drill="donut" tabindex="0" role="button"' : ''}><span class="swatch" style="background:${p.color}"></span><span>${esc(p.label)}</span>
+  $('#donutLegend').innerHTML = parts.map((p) => `<div${!donutDrill && p.label === 'Savings' && sav.length ? ' class="drillable" data-drill="donut" tabindex="0" role="button"' : !donutDrill && p.label === 'Taxes' ? ` class="drillable" data-toggle="taxes" tabindex="0" role="button" aria-pressed="${!hideTaxes}" title="${hideTaxes ? 'Show' : 'Hide'} taxes"` : ''}><span class="swatch" style="background:${p.color}"></span><span>${esc(p.label)}</span>
     <span>${usd(p.value)}</span><span class="pct">${base ? pct(p.value / base) : '—'}</span></div>`).join('')
     + (donutDrill ? `<div class="legend-total"><span></span><span>Total</span><span>${usd(c.savingsTotal)}</span><span class="pct">${c.savingsTotal ? '100.00%' : '—'}</span></div>` : '');
 
@@ -436,17 +442,18 @@ function renderSummary() {
   const s = calcSummary(doc);
   const cols = [
     ['Total income', s.totalIncome], ['Total Wants', s.totalWants], ['Total Needs', s.totalNeeds],
-    ['Total Savings', s.totalSavings], ['Cash', s.cashSavings], ['Investing', s.investingSavings],
+    ['Total Savings', s.totalSavings], ['Cash', s.cashBalance], ['Investing', s.investingSavings],
     ['Roth', s.roth, doc.settings.limitRoth], ['HSA', s.hsa, doc.settings.limitHsa], ['401k', s.k401, doc.settings.limit401k],
   ].filter(([h], i) => i < 4 || prefs.savingsCols.includes(h));
   const goalCols = (s.goals || []).filter((g) => prefs.savingsCols.includes(`goal:${g.id}`)).map((g) => [g.name, g.total, g.target, true]);
   cols.push(...goalCols);
+  const draw = calcDrawdown(doc);
   const rows = s.months.map((c, i) => `<tr data-goto="${i}" style="cursor:pointer">
       <td>${monthLabel(i)}</td><td>${c.hasIncome ? fmt(c.income) : '—'}</td>
       <td>${fmt(c.wantsTotal)}</td><td class="${c.wantsPct > 1 ? 'over' : ''}">${pct(c.wantsPct)}</td>
       <td>${fmt(c.needsTotal)}</td><td class="${c.needsPct > 1 ? 'over' : ''}">${pct(c.needsPct)}</td>
       <td>${fmt(c.savingsTotal)}</td><td>${pct(c.savingsPct)}</td>
-      <td>${fmt(c.allocated)}</td><td class="${c.remaining < -0.005 ? 'over' : ''}">${fmt(c.remaining)}</td></tr>`).join('');
+      <td>${fmt(c.allocated)}</td><td class="${draw[i].covered ? 'warn' : c.remaining < -0.005 ? 'over' : ''}">${fmt(c.remaining)}</td></tr>`).join('');
   $('#view').innerHTML = `
     <section class="card"><div class="table-wrap"><table class="sum-table" style="table-layout:fixed;min-width:${cols.length * 8}rem">
       <thead><tr>${cols.map(([h]) => `<th>${esc(h)}</th>`).join('')}</tr></thead>
@@ -701,8 +708,16 @@ view.addEventListener('paste', (e) => {
 });
 
 const toggleDonut = () => { donutDrill = !donutDrill; refresh(); };
-view.addEventListener('click', (e) => { if (e.target.closest('[data-drill="donut"]')) toggleDonut(); });
-view.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('[data-drill="donut"]')) { e.preventDefault(); toggleDonut(); } });
+const toggleTaxes = () => { hideTaxes = !hideTaxes; refresh(); };
+view.addEventListener('click', (e) => {
+  if (e.target.closest('[data-drill="donut"]')) toggleDonut();
+  else if (e.target.closest('[data-toggle="taxes"]')) toggleTaxes();
+});
+view.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  if (e.target.matches('[data-drill="donut"]')) { e.preventDefault(); toggleDonut(); }
+  else if (e.target.matches('[data-toggle="taxes"]')) { e.preventDefault(); toggleTaxes(); }
+});
 
 $('#tabs').addEventListener('click', (e) => {
   const b = e.target.closest('[data-tab]'); if (!b) return;
@@ -928,6 +943,7 @@ function openSettings(tabName = 'data') {
   f.needsRate.value = +(s.needsRate * 100).toFixed(6);
   f.savingsRate.value = +(s.savingsRate * 100).toFixed(6);
   f.rothStart.value = s.rothStart;
+  f.savingsDrawdown.value = s.savingsDrawdown ? 'yes' : 'no';
   f.limit401k.value = s.limit401k || 0; f.limitHsa.value = s.limitHsa || 0; f.limitRoth.value = s.limitRoth || 0;
   $('#backupLink').href = `/api/years/${doc.year}/backup.json`;
   f.theme.value = prefs.theme; f.density.value = prefs.density; f.monthStyle.value = prefs.monthStyle; f.entryStyle.value = prefs.entryStyle;
@@ -950,6 +966,7 @@ $('#settingsForm').addEventListener('submit', (e) => {
     savingsRate: num(f.savingsRate.value, s.savingsRate * 100) / 100,
     rothStart: num(f.rothStart.value, s.rothStart),
     payPeriod: f.payPeriod.value,
+    savingsDrawdown: f.savingsDrawdown.value === 'yes',
     goals: goalsDraft.map((g) => ({ id: g.id, name: g.name.trim(), target: Math.max(0, Number.isFinite(g.target) ? round2(g.target) : 0) })).filter((g) => g.name),
     limit401k: Math.max(0, num(f.limit401k.value, s.limit401k || 0)), limitHsa: Math.max(0, num(f.limitHsa.value, s.limitHsa || 0)),
     limitRoth: Math.max(0, num(f.limitRoth.value, s.limitRoth || 0)),

@@ -22,6 +22,7 @@
   --color-on-soft: var(--on-soft);
   --color-over: var(--over);
   --color-over-bg: var(--over-bg);
+  --color-warn: var(--warn);
   --color-on-over-bg: var(--on-over-bg);
   --color-ok: var(--ok);
 }
@@ -45,6 +46,7 @@
   --on-soft: light-dark(oklch(.3 calc(var(--c) * .5) var(--h)), oklch(.92 calc(var(--c) * .2) var(--h)));
   --over: light-dark(var(--color-red-600), var(--color-red-400));
   --over-bg: light-dark(var(--color-red-100), var(--color-red-950));
+  --warn: light-dark(var(--color-amber-600), var(--color-amber-400));
   --on-over-bg: light-dark(var(--color-red-900), var(--color-red-100));
   --tooltip-bg: light-dark(oklch(.3 .02 var(--h)), oklch(.92 .01 var(--h)));
   --tooltip-fg: light-dark(oklch(.97 .005 var(--h)), oklch(.25 .02 var(--h)));
@@ -72,6 +74,7 @@
   tbody tr:hover td { @apply bg-ink/5; }
   tr:last-child td { border-bottom: 0; }
   td.over { @apply text-over; }
+  td.warn { @apply text-warn; }
   tfoot td { @apply border-t border-line-strong font-medium; }
   fieldset { @apply m-0 grid gap-3 rounded-lg border border-line p-4; }
   legend { @apply px-1 text-sm font-medium text-ink-2; }
@@ -98,6 +101,7 @@
   .tab[aria-selected="true"] { @apply text-accent; }
   .tab[aria-selected="true"]::after { content: ""; @apply absolute bottom-0 left-1/2 h-0.5 -translate-x-1/2 rounded-t-sm bg-accent; width: max(24px, calc(100% - 32px)); }
   .tab .dot { @apply absolute top-2.5 right-2 size-1.5 rounded-full bg-over; }
+  .tab .dot.warn { @apply bg-warn; }
   .tab.sum { @apply ml-2; }
 
   /* Buttons: default outlined, .ghost text, .primary filled, .tonal soft, .danger red text */
@@ -119,6 +123,7 @@
   .kpi .k code { @apply font-mono text-[11px] font-normal text-faint; }
   .kpi .v { @apply mt-1 text-2xl tabular-nums max-sm:text-xl; }
   .kpi .v.neg { @apply text-over; }
+  .kpi .v.warn { @apply text-warn; }
   .kpi input.v { @apply w-full rounded-md border border-line bg-raised px-2 hover:border-line-strong focus:border-accent focus:outline-2 focus:outline-accent/40; }
 
   /* Layout */
@@ -176,6 +181,7 @@
   .legend div { @apply grid grid-cols-[12px_1fr_auto_auto] items-center gap-2 tabular-nums; }
   .legend .legend-total { @apply mt-1 border-t border-line pt-2 font-medium; }
   .legend .drillable { @apply -mx-2 cursor-pointer rounded-md px-2 py-0.5 hover:bg-ink/5; }
+  .legend [aria-pressed="false"] { @apply line-through opacity-45; }
   .legend .pct { @apply min-w-[52px] text-right text-ink-2; }
 
   /* Summary */
