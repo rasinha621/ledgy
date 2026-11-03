@@ -113,7 +113,7 @@ if (AUTH) {
 
   // Only the login page and what it needs are open. Everything else needs a session.
   const sameSite = (req) => req.get('x-ledgy') === '1' && (!req.get('sec-fetch-site') || req.get('sec-fetch-site') === 'same-origin');
-  const open = ['/styles.css', '/login.js', '/seed.js', '/icon.js', '/icon.svg'];
+  const open = ['/styles.css', '/login.js', '/seed.js', '/icon.js', '/icon.svg', '/apple-touch-icon.png'];
   app.get(open, express.static(path.join(here, 'public')));
   app.get('/login', (req, res) => (hasSession(req) ? res.redirect('/') : res.sendFile(path.join(here, 'public/login.html'))));
   app.post('/login', express.json({ limit: '1kb' }), (req, res) => {
