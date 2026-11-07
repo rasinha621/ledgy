@@ -231,6 +231,11 @@ function rowHtml(sec, r, i, month) {
   </li>`;
 }
 
+// Collapsed cards hide their rows and show a one-line quick-add instead. Remembered per browser.
+const collapsed = new Set((() => { try { return JSON.parse(store.get('ledgy.collapsed') || '[]'); } catch { return []; } })());
+const colKey = (sec) => `${tab}:${sec}`; // collapsed state is per month
+const saveCollapsed = () => store.set('ledgy.collapsed', JSON.stringify([...collapsed]));
+
 function cardHtml(sec, month) {
   const rows = rowsOf(month, sec);
   if (!rows.length) rows.push(newRow(sec)); // an empty category always has one row ready for input
@@ -242,16 +247,21 @@ function cardHtml(sec, month) {
        <div class="meter" data-meter="${sec}"><span style="background:var(${meta.color})"></span></div>`
     : `<div class="feeds" data-feeds="${sec}"></div>`;
   const foot = sec === 'savings' ? '<div class="feeds" style="padding:0 14px 10px"></div>' : '';
-  return `<section class="card" data-sec="${sec}">
-    <div class="card-h">
+  const isCol = collapsed.has(colKey(sec));
+  return `<section class="card${isCol ? ' collapsed' : ''}" data-sec="${sec}">
+    <div class="card-h" data-toggle-card="${sec}" role="button" tabindex="0" aria-expanded="${!isCol}" title="${isCol ? 'Expand' : 'Collapse'}">
       <div class="card-t"><span class="swatch" style="background:var(${meta.color})"></span>${esc(meta.title)}
         ${custom ? `<button class="icon-btn sec-btn" data-act="sec-rename" data-key="${sec}" aria-label="Edit list" title="Edit list">✎</button><button class="icon-btn sec-btn" data-act="sec-del" data-key="${sec}" aria-label="Delete list" title="Delete list">✕</button>` : ''}
         <span class="total" data-k="${sec}Total"></span></div>
       ${sub}
     </div>
-    <ul class="rows">${rows.length ? rows.map((r, i) => rowHtml(sec, r, i, month)).join('') : '<li class="empty-row">No rows yet.</li>'}</ul>
+    ${isCol ? `<form class="quick" data-quick="${sec}" autocomplete="off">
+      <input class="qa-amt" inputmode="decimal" placeholder="Amount" aria-label="Amount">
+      <input class="qa-lbl" placeholder="${esc(meta.ph)}" aria-label="${esc(meta.ph)}">
+      <button class="qa-add" type="submit" aria-label="Add transaction" title="Add transaction"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" fill="none"/></svg></button>
+    </form>` : `<ul class="rows">${rows.length ? rows.map((r, i) => rowHtml(sec, r, i, month)).join('') : '<li class="empty-row">No rows yet.</li>'}</ul>
     <button class="add" data-add="${sec}">+ Add row</button>
-    ${foot}
+    ${foot}`}
   </section>`;
 }
 
@@ -306,7 +316,7 @@ function refresh() {
     set(`${l.key}Total`, `$${fmt(sumRows(listRows(m, l.key)))} spent`);
     const el = $(`[data-feeds="${l.key}"]`);
     const row = m[l.group].find((r) => r.kind === l.key);
-    if (el) el.textContent = row ? `Total feeds the ${SEC[l.group].title} row “${row.label || l.title}”.` : `Not linked to ${SEC[l.group].title}. Type this list’s name in a ${SEC[l.group].title} amount to link it.`;
+    if (el) el.textContent = row ? (row.label?.trim() ? `Linked to ${row.label.trim()} in ${SEC[l.group].title}` : `Linked to ${SEC[l.group].title}`) : 'Not linked to a row.';
   }
   document.querySelectorAll('.amt.linked').forEach((el) => {
     const sec = el.closest('[data-sec]')?.dataset.sec;
@@ -594,7 +604,8 @@ function showPop(t) {
   popFor = t; popHi = -1;
   if (!items.length) { pop.hidden = true; return; }
   const m = doc.months[tab]; const cur = rowCtx(t).rows[rowCtx(t).i].kind;
-  pop.innerHTML = '<div class="pop-h">Total of a list</div>' + items.map((l) => `<button type="button" data-key="${l.key}" class="${l.key === cur ? 'cur' : ''}"><span>Σ ${esc(l.title)}</span><span>${fmt(sumRows(listRows(m, l.key)))}</span></button>`).join('');
+  const linked = cur && cur !== 'manual';
+  pop.innerHTML = '<div class="pop-h">Total of a list</div>' + items.map((l) => `<button type="button" data-key="${l.key}" class="${l.key === cur ? 'cur' : ''}"><span>Σ ${esc(l.title)}</span><span>${fmt(sumRows(listRows(m, l.key)))}</span></button>`).join('') + (linked ? '<button type="button" data-key="__unlink"><span>Unlink</span></button>' : '');
   const r = t.getBoundingClientRect();
   pop.style.left = `${r.left}px`; pop.style.top = `${r.bottom + 2}px`; pop.style.minWidth = `${Math.max(r.width, 200)}px`;
   pop.hidden = false;
@@ -603,6 +614,11 @@ function hidePop() { pop.hidden = true; popFor = null; popHi = -1; }
 function pickList(key) {
   const t = popFor; if (!t) return;
   const ctx = rowCtx(t); const row = ctx.rows[ctx.i];
+  if (key === '__unlink') {
+    row.kind = 'manual'; row.amount = null;
+    t.classList.remove('linked'); t.style.color = ''; t.value = '';
+    hidePop(); scheduleSave(); refresh(); return;
+  }
   row.kind = key; row.amount = null;
   t.classList.add('linked'); t.style.color = ''; t.value = listInfo(key).title; t.select();
   hidePop(); scheduleSave(); refresh();
@@ -612,6 +628,41 @@ pop.addEventListener('mousedown', (e) => { // keep focus in the input
   const b = e.target.closest('button[data-key]'); if (b) pickList(b.dataset.key);
 });
 window.addEventListener('scroll', hidePop, true);
+
+// Swap just one card's markup so the charts beside it aren't rebuilt.
+function replaceCard(sec) {
+  const el = $(`[data-sec="${sec}"]`); if (!el) return renderMonth();
+  el.outerHTML = cardHtml(sec, doc.months[tab]);
+  refresh();
+}
+function toggleCard(sec) {
+  const k = colKey(sec);
+  if (collapsed.has(k)) collapsed.delete(k); else collapsed.add(k);
+  saveCollapsed(); replaceCard(sec);
+  if (collapsed.has(k)) $(`[data-sec="${sec}"] .qa-amt`)?.focus();
+  else $(`[data-sec="${sec}"] [data-toggle-card]`)?.focus();
+}
+view.addEventListener('click', (e) => {
+  const h = e.target.closest('[data-toggle-card]');
+  if (h && !e.target.closest('button')) toggleCard(h.dataset.toggleCard);
+});
+view.addEventListener('keydown', (e) => {
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('[data-toggle-card]')) { e.preventDefault(); toggleCard(e.target.dataset.toggleCard); }
+});
+view.addEventListener('submit', (e) => {
+  const f = e.target.closest('[data-quick]'); if (!f) return;
+  e.preventDefault();
+  const sec = f.dataset.quick; const amt = f.querySelector('.qa-amt'); const lbl = f.querySelector('.qa-lbl');
+  const p = parseAmount(amt.value);
+  if (!amt.value.trim() || !p.ok) { amt.style.color = 'var(--over)'; amt.focus(); return; }
+  const row = newRow(sec); row.amount = p.v; row.label = lbl.value.trim();
+  const rows = rowsOf(doc.months[tab], sec);
+  // Drop the placeholder blank row an empty category starts with before appending.
+  if (rows.length === 1 && rows[0].amount == null && !rows[0].label) rows.length = 0;
+  rows.push(row); scheduleSave(); replaceCard(sec);
+  $(`[data-sec="${sec}"] .qa-amt`)?.focus();
+});
+view.addEventListener('input', (e) => { if (e.target.classList.contains('qa-amt')) e.target.style.color = ''; });
 
 view.addEventListener('click', async (e) => {
   const t = e.target.closest('button, tr[data-goto]');

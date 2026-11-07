@@ -97,12 +97,11 @@
   .save-state.err { @apply text-over; }
 
   .tabs { @apply sticky top-16 z-[4] flex overflow-x-auto border-b border-line bg-card px-2 max-sm:top-0; scrollbar-width: none; }
-  .tab { @apply relative h-12 min-w-16 cursor-pointer whitespace-nowrap border-0 bg-transparent px-4 text-sm font-medium text-ink-2 transition-colors hover:bg-ink/5 hover:text-ink active:bg-accent/10; }
+  .tab { @apply relative h-12 min-w-16 flex-1 cursor-pointer whitespace-nowrap border-0 bg-transparent px-4 text-sm font-medium text-ink-2 transition-colors hover:bg-ink/5 hover:text-ink active:bg-accent/10; }
   .tab[aria-selected="true"] { @apply text-accent; }
   .tab[aria-selected="true"]::after { content: ""; @apply absolute bottom-0 left-1/2 h-0.5 -translate-x-1/2 rounded-t-sm bg-accent; width: max(24px, calc(100% - 32px)); }
   .tab .dot { @apply absolute top-2.5 right-2 size-1.5 rounded-full bg-over; }
   .tab .dot.warn { @apply bg-warn; }
-  .tab.sum { @apply ml-2; }
 
   /* Buttons: default outlined, .ghost text, .primary filled, .tonal soft, .danger red text */
   .btn { @apply inline-flex h-10 cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-lg border border-line-strong bg-transparent px-5 text-sm font-medium text-accent no-underline transition-colors hover:bg-accent/10 active:bg-accent/15; }
@@ -159,6 +158,12 @@
   .row:hover .icon-btn, .row:focus-within .icon-btn { opacity: 1; }
   .add { @apply mx-2 mt-2 mb-4 block h-10 w-[calc(100%-16px)] cursor-pointer rounded-lg border-0 bg-transparent px-3 text-sm font-medium text-accent transition-colors hover:bg-accent/10 active:bg-accent/15; }
   .add-list { @apply h-10 cursor-pointer rounded-xl border border-dashed border-line-strong bg-transparent text-sm font-medium text-accent transition-colors hover:bg-accent/10 active:bg-accent/15; }
+  .card-h[data-toggle-card] { @apply cursor-pointer select-none; }
+  .card.collapsed .card-h { @apply pb-3; }
+  .quick { @apply m-0 grid grid-cols-[96px_minmax(0,1fr)_40px] items-center gap-1 border-t border-line px-2 py-2; }
+  .quick input { @apply h-10 w-full min-w-0 rounded-md border border-line bg-transparent px-2 focus:border-accent focus:outline-none; }
+  .quick .qa-amt { @apply text-right tabular-nums; }
+  .quick .qa-add { @apply grid size-10 cursor-pointer place-items-center p-0 leading-none rounded-full border-0 bg-accent/10 text-lg text-accent hover:bg-accent/20; }
   .empty-row { @apply px-2 py-3 text-xs text-ink-2; }
   .card-t .sec-btn { @apply size-8 text-sm opacity-60 hover:opacity-100; }
 
@@ -177,6 +182,8 @@
   .chart-box.tall { @apply h-80; }
   .chart-card.fill { @apply flex flex-col; }
   .chart-card.fill .chart-box { @apply h-auto min-h-80 flex-1; }
+  /* Keep the canvas out of flow so the box follows the grid row, not the chart's last size (otherwise it never shrinks back). */
+  .chart-card.fill .chart-box canvas { @apply absolute inset-0; }
   .legend { @apply mt-4 grid gap-2 text-sm; }
   .legend div { @apply grid grid-cols-[12px_1fr_auto_auto] items-center gap-2 tabular-nums; }
   .legend .legend-total { @apply mt-1 border-t border-line pt-2 font-medium; }
