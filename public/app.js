@@ -1,6 +1,7 @@
 import { syncIcon } from '/icon.js';
 import { hexToOklch, oklchToHex, isHex, applySeed } from '/seed.js';
 import { MONTHS, baseLists, calcDrawdown, calcMonth, calcSummary, needsRowValue, listRows, sumRows, n, round2, syncGoals } from '/lib/calc.js';
+import { hideTip, showTip } from '/lib/functions.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -1054,21 +1055,6 @@ document.fonts?.ready.then(() => doc && render());
 const tipEl = Object.assign(document.createElement('div'), { id: 'tip', role: 'tooltip' });
 document.body.append(tipEl);
 let tipTimer = null; let tipFor = null;
-function hideTip() { clearTimeout(tipTimer); tipEl.classList.remove('on'); tipFor = null; }
-function showTip(el) {
-  const text = el.getAttribute('title') || el.dataset.tip;
-  if (el.hasAttribute('title')) { // Take over from the browser tooltip and keep the text for assistive tech
-    el.dataset.tip = text; el.removeAttribute('title');
-    if (!el.getAttribute('aria-label') && !el.textContent.trim()) el.setAttribute('aria-label', text); else el.setAttribute('aria-description', text);
-  }
-  if (!el.dataset.tip) return;
-  tipEl.textContent = el.dataset.tip; tipFor = el;
-  const r = el.getBoundingClientRect(); const t = tipEl.getBoundingClientRect();
-  const below = r.bottom + 8 + t.height < innerHeight;
-  tipEl.style.top = `${below ? r.bottom + 8 : r.top - 8 - t.height}px`;
-  tipEl.style.left = `${Math.max(8, Math.min(innerWidth - t.width - 8, r.left + r.width / 2 - t.width / 2))}px`;
-  tipEl.classList.add('on');
-}
 const tipTarget = (e) => e.target.closest?.('[title]:not([title=""]), [data-tip]');
 document.addEventListener('pointerover', (e) => {
   const el = tipTarget(e); if (!el || el === tipFor) return;
