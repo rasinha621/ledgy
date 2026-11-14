@@ -326,3 +326,8 @@
 
 /* Summary totals: center every column so the gaps between values are even */
 .sum-table th, .sum-table td { text-align: center; }
+
+/* Hide number-input spinners */
+input.no-spin::-webkit-outer-spin-button,
+input.no-spin::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+input.no-spin { -moz-appearance: textfield; appearance: textfield; }
