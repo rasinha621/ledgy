@@ -271,7 +271,7 @@ function renderMonth() {
     <div class="kpis"><div class="kpis-main">
       <div class="kpi" role="button" tabindex="0" data-act="open-income" style="cursor:pointer" title="Edit income in Settings"><div class="k">Net income </div><div class="v">${usd(m.income)}</div></div>
       <div class="kpi"><div class="k">Allocated </div><div class="v" data-k="allocated"></div></div>
-      <div class="kpi"><div class="k">Percentage spent </div><div class="v" data-k="allocatedPct"></div></div>
+      <div class="kpi"><div class="k">Percent allocated </div><div class="v" data-k="allocatedPct"></div></div>
       </div>
       <div class="kpi"><div class="k">Amount remaining </div><div class="v" data-k="remaining"></div></div>
     </div>
@@ -322,10 +322,10 @@ function refresh() {
     const sec = el.closest('[data-sec]')?.dataset.sec;
     if (el !== document.activeElement && LINKABLE.includes(sec)) el.value = fmt(needsRowValue(m[sec][Number(el.dataset.i)], m));
   });
-  set('allocated', fmt(c.allocated));
+  set('allocated', usd(c.allocated));
   set('allocatedPct', c.allocatedPct === null ? '—' : pct(c.allocatedPct));
   const covered = calcDrawdown(doc)[tab].covered;
-  set('remaining', fmt(c.remaining), c.remaining < -0.005 && !covered);
+  set('remaining', usd(c.remaining), c.remaining < -0.005 && !covered);
   document.querySelectorAll('[data-k="remaining"]').forEach((el) => el.classList.toggle('warn', covered));
   updateMonthCharts(m, c);
   renderTabs();
