@@ -213,6 +213,14 @@ app.post('/api/years/:year/import', express.raw({ type: 'application/octet-strea
   const y = yearParam(req, res); if (y === null) return;
   if (getYear(y) && req.query.overwrite !== '1') return res.status(409).json({ error: 'Year exists' });
   try {
+    // A JSON backup (from "JSON backup") starts with "{"; an .xlsx is a zip and starts with "PK".
+    const text = Buffer.isBuffer(req.body) ? req.body.toString('utf8').replace(/^\uFEFF/, '').trimStart() : '';
+    if (text.startsWith('{')) {
+      let doc;
+      try { doc = JSON.parse(text); } catch { throw new Error('This is not a valid JSON backup.'); }
+      if (!doc || typeof doc !== 'object' || !Array.isArray(doc.months)) throw new Error('This JSON file is not a Ledgy backup.');
+      return res.json({ doc: saveYear(y, doc), warnings: [] });
+    }
     const { doc, warnings } = await importWorkbook(req.body, y);
     res.json({ doc: saveYear(y, doc), warnings });
   } catch (e) {

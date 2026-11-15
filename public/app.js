@@ -205,7 +205,7 @@ function emptyState() {
   return `<div class="empty">
     <h1>No budget yet</h1>
     <p class="muted">Import your spreadsheet to bring in all months, or start a blank year. Each month uses the same layout: Wants, Needs and Savings with budgets from your income.</p>
-    <div class="btns"><button class="btn primary" data-act="import">Import .xlsx</button><button class="btn tonal" data-act="new">Start a new year</button></div>
+    <div class="btns"><button class="btn primary" data-act="import">Import</button><button class="btn tonal" data-act="new">Start a new year</button></div>
   </div>`;
 }
 
@@ -823,6 +823,11 @@ function openImport() {
   $('#importGo').disabled = false;
   $('#importDlg').showModal();
 }
+$('#importFile').addEventListener('change', async () => {
+  const file = $('#importFile').files[0];
+  if (!file || !/\.json$/i.test(file.name)) return;
+  try { const y = JSON.parse(await file.text()).year; if (Number.isInteger(y)) $('#importYear').value = y; } catch { /* the server reports bad files */ }
+});
 $('#importBtn').addEventListener('click', () => { $('#settingsDlg').close(); openImport(); });
 $('#importForm').addEventListener('submit', async (e) => {
   if (e.submitter?.value === 'cancel') return;
@@ -942,12 +947,17 @@ $('#savingsColsBox').addEventListener('change', (e) => { const c = e.target.data
 
 // One section per month. Pay rows (one, or two when bimonthly) plus ad hoc extras are edited in a draft and applied on save.
 let incomeDraft = []; let draftPay = 'monthly';
+// Months folded shut in the Income panel (click a month's title to toggle). Remembered per browser.
+const incCollapsed = new Set((() => { try { return JSON.parse(store.get('ledgy.incCollapsed') || '[]').filter(Number.isInteger); } catch { return []; } })());
 const payCount = (mode = draftPay) => (mode === 'bimonthly' ? 2 : 1);
 function renderIncomePanel() {
   const cnt = payCount();
   const field = (attrs, val, label, type = 'number') => `<label class="tf"><input type="${type}" ${type === 'number' ? 'step="any" min="0"' : 'maxlength="60" autocomplete="off"'} ${attrs} value="${esc(val ?? '')}" placeholder=" "><span>${label}</span></label>`;
-  $('#setPanelIncome').innerHTML = incomeDraft.map((m, i) => `<fieldset>
-    <legend>${esc(monthLabel(i))}</legend>
+  $('#setPanelIncome').innerHTML = incomeDraft.map((m, i) => `<fieldset${incCollapsed.has(i) ? ' style="padding:0"' : ''}>
+    ${incCollapsed.has(i)
+      ? `<div role="button" tabindex="0" data-toggle-inc="${i}" aria-expanded="false" title="Expand" style="cursor:pointer;padding:12px 16px;font-size:.875rem;font-weight:500">${esc(monthLabel(i))}</div>`
+      : `<legend role="button" tabindex="0" data-toggle-inc="${i}" aria-expanded="true" title="Collapse" style="cursor:pointer">${esc(monthLabel(i))}</legend>`}
+    <div style="display:grid;gap:inherit" ${incCollapsed.has(i) ? 'hidden' : ''}>
     ${Array.from({ length: cnt }, (_, p) => `<div class="grid3" style="grid-template-columns:repeat(2,1fr)">
       ${field(`data-m="${i}" data-p="${p}" data-k="gross"`, m.pay[p].gross, `Paycheck ${p + 1} Gross`)}
       ${field(`data-m="${i}" data-p="${p}" data-k="taxes"`, m.pay[p].taxes, `Paycheck ${p + 1} Taxes`)}
@@ -958,6 +968,7 @@ function renderIncomePanel() {
       <button type="button" class="btn ghost" data-rm-m="${i}" data-rm-x="${j}" aria-label="Remove extra income">Remove</button>
     </div>`).join('')}
     <div><button type="button" class="btn" data-add-extra="${i}">+ Add extra income</button></div>
+    </div>
   </fieldset>`).join('');
 }
 $('#setPanelIncome').addEventListener('input', (e) => {
@@ -965,7 +976,10 @@ $('#setPanelIncome').addEventListener('input', (e) => {
   const v = t.dataset.k === 'label' ? t.value : (t.value === '' ? null : Number(t.value));
   if (t.dataset.x !== undefined) m.extras[t.dataset.x][t.dataset.k] = v; else m.pay[t.dataset.p][t.dataset.k] = v;
 });
+const toggleInc = (el) => { const i = Number(el.dataset.toggleInc); if (incCollapsed.has(i)) incCollapsed.delete(i); else incCollapsed.add(i); store.set('ledgy.incCollapsed', JSON.stringify([...incCollapsed])); renderIncomePanel(); $(`#setPanelIncome [data-toggle-inc="${i}"]`)?.focus(); };
+$('#setPanelIncome').addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('[data-toggle-inc]')) { e.preventDefault(); toggleInc(e.target); } });
 $('#setPanelIncome').addEventListener('click', (e) => {
+  const h = e.target.closest('[data-toggle-inc]'); if (h) return toggleInc(h);
   const b = e.target.closest('button'); if (!b) return;
   if (b.dataset.addExtra !== undefined) incomeDraft[b.dataset.addExtra].extras.push({ label: '', amount: null });
   else if (b.dataset.rmM !== undefined) incomeDraft[b.dataset.rmM].extras.splice(Number(b.dataset.rmX), 1);
@@ -982,6 +996,7 @@ document.querySelector('.set-tabs').addEventListener('keydown', (e) => {
   const next = tabs[(cur + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length]; showSettingsTab(next.dataset.tab); next.focus();
 });
 $('#settingsBtn').addEventListener('click', () => openSettings());
+$('#settingsClose').addEventListener('click', () => $('#settingsDlg').close());
 view.addEventListener('click', (e) => { if (e.target.closest('[data-act="open-income"]')) openSettings('income'); });
 view.addEventListener('keydown', (e) => {
   if ((e.key === 'Enter' || e.key === ' ') && e.target.dataset?.act === 'open-income') { e.preventDefault(); openSettings('income'); }
