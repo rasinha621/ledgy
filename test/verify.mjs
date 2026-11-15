@@ -1,10 +1,11 @@
-// Imports the original xlsx and compares every computed cell to the values cached in the file.
+// Imports an xlsx (default: test/fixture.xlsx, made by test/make-fixture.mjs) and compares every computed cell to the values cached in the file.
 import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import ExcelJS from 'exceljs';
 import { importWorkbook, exportWorkbook } from '../lib/xlsx-io.js';
 import { calcMonth, calcSummary, MONTHS } from '../lib/calc.js';
 
-const file = process.argv[2];
+const file = process.argv[2] || fileURLToPath(new URL('./fixture.xlsx', import.meta.url));
 const buf = readFileSync(file);
 const { doc, warnings } = await importWorkbook(buf, 2026);
 const wb = new ExcelJS.Workbook(); await wb.xlsx.load(buf);
@@ -29,12 +30,12 @@ const check = async (book, d, label, keys) => {
   keys.forEach((k, i) =>
     cmp(`${label} Summary!${String.fromCharCode(65 + i)}2`, s[k], cached(ws, `${String.fromCharCode(65 + i)}2`)));
 };
-// The source workbook has one bank column; the app splits it into Cash and Investing.
-await check(wb, doc, 'import', ['totalIncome','totalWants','totalNeeds','totalSavings','cashSavings','roth','hsa','k401']);
+const keys = ['totalIncome','totalWants','totalNeeds','totalSavings','cashSavings','investingSavings','roth','hsa','k401'];
+await check(wb, doc, 'import', keys);
 // Round trip: export, import again, compare to the original cached values.
 const out = await exportWorkbook(doc);
 const again = await importWorkbook(Buffer.from(out), 2026);
-await check(wb, again.doc, 'roundtrip', ['totalIncome','totalWants','totalNeeds','totalSavings','cashSavings','investingSavings','roth','hsa','k401']);
+await check(wb, again.doc, 'roundtrip', keys);
 console.log('settings', doc.settings);
 console.log('warnings', warnings);
 console.log(`${checked} checks, ${bad} mismatches`);
