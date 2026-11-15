@@ -1,7 +1,7 @@
 services:
   ledgy:
-    build: .
-    pull_policy: build
+    image: ras2297/ledgy:latest
+    pull_policy: always
     restart: unless-stopped
     environment:
       - TZ=${TZ:-America/New_York}
