@@ -139,5 +139,5 @@ export function initMonthEvents() {
   onActivate(view, '[data-toggle-card]', (el) => toggleCard(el.dataset.toggleCard), 'button');
   onActivate(view, '[data-drill="donut"]', toggleDonut);
   onActivate(view, '[data-toggle="taxes"]', () => { state.hideTaxes = !state.hideTaxes; refresh(); });
-  onActivate(view, '[data-act="open-income"]', () => openSettings('income'));
+  onActivate(view, '[data-act="open-income"]', () => openSettings('income', state.tab));
 }
