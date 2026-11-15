@@ -10,7 +10,7 @@ import { render, loadYears } from './render.js';
 import { askDialog } from './dialogs.js';
 import { draftSeed, resetSeedPicker, initSeedPicker } from './seed-picker.js';
 import { resetGoals, draftGoals, draftCols, initGoalsPanel } from './goals-panel.js';
-import { resetIncome, applyIncome, initIncomePanel } from './income-panel.js';
+import { resetIncome, applyIncome, initIncomePanel, showIncomeMonth } from './income-panel.js';
 
 const form = () => $('#settingsForm');
 const PANELS = { data: '#setPanelData', custom: '#setPanelCustom', income: '#setPanelIncome' };
@@ -30,7 +30,7 @@ const draftLook = () => {
 };
 const previewDraft = () => applyPrefs({ ...state.prefs, ...draftLook() });
 
-export function openSettings(tabName = 'data') {
+export function openSettings(tabName = 'data', incomeMonth = null) {
   showSettingsTab(tabName);
   const f = form(); const { doc, prefs } = state; const s = doc.settings;
   $('#setYearLbl').textContent = doc.year;
@@ -44,6 +44,7 @@ export function openSettings(tabName = 'data') {
   resetSeedPicker(prefs.seed);
   f.payPeriod.value = resetIncome(doc);
   $('#settingsDlg').showModal();
+  if (incomeMonth !== null) showIncomeMonth(incomeMonth);
 }
 
 function onSubmit(e) {

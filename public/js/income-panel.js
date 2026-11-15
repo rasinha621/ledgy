@@ -8,13 +8,17 @@ import { monthLabel } from './prefs.js';
 let draft = []; let payPeriod = 'monthly';
 // Months folded shut in the panel (click a month's title to toggle). Remembered per browser.
 const collapsed = storedSet('ledgy.incCollapsed', Number.isInteger);
+// When opened from a month's net income card only that month is expanded. This lasts until the dialog is next
+// opened and leaves the remembered set above alone.
+let focused = null;
+const isShut = (i) => (focused ? focused.has(i) : collapsed.has(i));
 const payCount = (mode) => (mode === 'bimonthly' ? 2 : 1);
 const panel = () => $('#setPanelIncome');
 
 const field = (attrs, val, label, type = 'number') => `<label class="tf"><input type="${type}" ${type === 'number' ? 'step="any" min="0"' : 'maxlength="60" autocomplete="off"'} ${attrs} value="${esc(val ?? '')}" placeholder=" "><span>${label}</span></label>`;
 
 function monthHtml(m, i) {
-  const shut = collapsed.has(i);
+  const shut = isShut(i);
   const head = shut
     ? `<div role="button" tabindex="0" data-toggle-inc="${i}" aria-expanded="false" title="Expand" style="cursor:pointer;padding:12px 16px;font-size:.875rem;font-weight:500">${esc(monthLabel(i))}</div>`
     : `<legend role="button" tabindex="0" data-toggle-inc="${i}" aria-expanded="true" title="Collapse" style="cursor:pointer">${esc(monthLabel(i))}</legend>`;
@@ -41,6 +45,7 @@ const renderPanel = () => { panel().innerHTML = draft.map(monthHtml).join(''); }
 
 export function resetIncome(doc) {
   payPeriod = doc.settings.payPeriod || 'monthly';
+  focused = null;
   draft = doc.months.map((m) => ({
     pay: [0, 1].map((p) => ({ gross: m.pay?.[p]?.gross ?? null, taxes: m.pay?.[p]?.taxes ?? null })),
     extras: (m.extras || []).map((x) => ({ ...x })),
@@ -65,9 +70,16 @@ export function applyIncome(doc, mode) {
   });
 }
 
+// Open only one month's section (used when jumping here from a month's net income card) and bring it into view.
+export function showIncomeMonth(i) {
+  focused = new Set(draft.map((_, j) => j).filter((j) => j !== i)); renderPanel();
+  $(`#setPanelIncome [data-toggle-inc="${i}"]`)?.scrollIntoView({ block: 'start' });
+}
+
 function toggle(el) {
   const i = Number(el.dataset.toggleInc);
-  collapsed.toggle(i); renderPanel();
+  if (focused) { if (!focused.delete(i)) focused.add(i); } else collapsed.toggle(i);
+  renderPanel();
   $(`#setPanelIncome [data-toggle-inc="${i}"]`)?.focus();
 }
 

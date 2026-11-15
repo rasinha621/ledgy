@@ -3,16 +3,26 @@
 import { writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { exportWorkbook } from '../lib/xlsx-io.js';
-import { emptyYear, normalizeYear } from '../lib/calc.js';
+import { emptyYear, normalizeYear, syncGoals, round2 } from '../lib/calc.js';
 
 const doc = emptyYear(2026);
 // Custom budget rates and a Roth balance carried in from earlier years.
-Object.assign(doc.settings, { wantsRate: 0.25, needsRate: 0.55, savingsRate: 0.2, rothStart: 1500 });
+Object.assign(doc.settings, {
+  wantsRate: 0.25, needsRate: 0.55, savingsRate: 0.2, rothStart: 1500,
+  payPeriod: 'bimonthly', savingsDrawdown: true, limit401k: 23000, limitHsa: 4150, limitRoth: 7000,
+  goals: [{ id: 'g1', name: 'Vacation', target: 3000 }, { id: 'g2', name: 'Emergency fund', target: 10000 }],
+});
 const rows = (...a) => a.map(([label, amount]) => ({ label, amount }));
 
 doc.months.forEach((m, i) => {
   if (i === 5) return; // JUN left empty: no income, so the percentages are #DIV/0!
-  m.income = 5000 + i * 125.5;
+  // Two paychecks a month (bimonthly). Net income is gross minus taxes plus extras, as the Income tab computes it.
+  const pay = [{ gross: 3000 + i * 60, taxes: 560 + i * 8.5 }, { gross: 3000 + i * 60, taxes: 560 + i * 8.5 }];
+  m.pay = pay;
+  m.extras = [];
+  if (i === 3) m.extras.push({ label: 'Tax refund', amount: 1200 });
+  if (i === 11) m.extras.push({ label: 'Year-end bonus', amount: 2500.5 }, { label: 'Side gig', amount: 300 });
+  m.income = round2(pay.reduce((t, p) => t + p.gross - p.taxes, 0) + m.extras.reduce((t, x) => t + x.amount, 0));
   m.wants = [
     { label: 'Dining out', amount: 180.25 + i, kind: 'manual' },
     { label: 'Streaming', amount: 22.99, kind: 'manual' },
@@ -29,6 +39,13 @@ doc.months.forEach((m, i) => {
   m.needs.push({ label: 'Pets', amount: null, kind: 'x1' });
   m.wants.push({ label: 'Gifts', amount: null, kind: 'x2' });
 });
+// Savings goals: each adds a row to every month, funded some months.
+syncGoals(doc);
+doc.months.forEach((m, i) => {
+  if (i === 5) return;
+  m.savings.find((r) => r.goal === 'g1').amount = 100 + i * 5;
+  m.savings.find((r) => r.goal === 'g2').amount = i < 6 ? 200 : 150;
+});
 // FEB: Transit list renamed and Groceries list removed from the month.
 doc.months[1].titles = { transit: 'Commute' };
 doc.months[1].removed = ['groceries'];
@@ -36,6 +53,8 @@ doc.months[1].groceries = [];
 doc.months[1].needs.forEach((r) => { if (r.kind === 'groceries') r.kind = 'manual'; });
 // MAR: spending above income, a text note in an amount cell is not part of this fixture.
 doc.months[2].needs[0].amount = 6500;
+// MAR and AUG spend more than they earn, so with drawdown on the shortfall comes out of the year's cash savings.
+doc.months[7].needs[0].amount = 6200;
 
 const out = fileURLToPath(new URL('./fixture.xlsx', import.meta.url));
 writeFileSync(out, Buffer.from(await exportWorkbook(normalizeYear(doc, 2026))));

@@ -36,6 +36,13 @@ await check(wb, doc, 'import', keys);
 const out = await exportWorkbook(doc);
 const again = await importWorkbook(Buffer.from(out), 2026);
 await check(wb, again.doc, 'roundtrip', keys);
+// Income and Settings sheets: what was imported must survive a second export and import unchanged.
+const same = (what, a, b) => { checked++; if (JSON.stringify(a) !== JSON.stringify(b)) { bad++; console.log('MISMATCH', what, JSON.stringify(a), JSON.stringify(b)); } };
+same('roundtrip pay', doc.months.map((m) => m.pay), again.doc.months.map((m) => m.pay));
+same('roundtrip extras', doc.months.map((m) => m.extras), again.doc.months.map((m) => m.extras));
+same('roundtrip settings', doc.settings, again.doc.settings);
+same('roundtrip savings goals', doc.months.map((m) => m.savings.map((r) => r.goal ?? null)), again.doc.months.map((m) => m.savings.map((r) => r.goal ?? null)));
+cmp('Summary!J2 cash balance', calcSummary(doc).cashBalance, cached(wb.getWorksheet('Summary'), 'J2'));
 console.log('settings', doc.settings);
 console.log('warnings', warnings);
 console.log(`${checked} checks, ${bad} mismatches`);
