@@ -4,7 +4,45 @@ A self-hosted web app that handles all the annoying calculations so you can just
 
 If you want to audit everything yourself, you can also export everything as an Excel sheet with the formulas used, to make sure everything adds up correctly.
 
-## Quick start (your own computer, about 5 minutes)
+## Install
+
+Pick one:
+
+| | Desktop app | Docker (self-hosted) |
+|---|---|---|
+| Best for | One person on one computer | A home server, NAS, or sharing across devices |
+| Needs | Nothing to install first | Docker |
+| Login | None (only your computer can open it) | Username and password |
+| Data | In the app's own folder on your computer | In a Docker volume |
+
+### Option A: Desktop app (Mac, Windows, Linux)
+
+1. Go to the [**Releases** page](https://github.com/rasinha621/ledgy/releases/latest) and download the file for your computer:
+   - **Mac:** `Ledgy-…-mac-arm64.dmg` for Apple Silicon (M1 or newer), or `Ledgy-…-mac-x64.dmg` for Intel.
+   - **Windows:** `Ledgy-…-win-x64.exe`
+   - **Linux:** `Ledgy-…-linux-x86_64.AppImage`
+2. **Mac:** open the DMG and drag **Ledgy** into **Applications**. **Windows:** run the installer. **Linux:** make the file executable and run it.
+3. Open **Ledgy**, then click **New year** (or **Import** to bring in an `.xlsx` file).
+
+Your data is saved on your computer and stays when you update. To update, install the newer version over the old one.
+
+| Where your data lives | |
+|---|---|
+| Mac | `~/Library/Application Support/Ledgy/ledgy.db` |
+| Windows | `%APPDATA%\Ledgy\ledgy.db` |
+| Linux | `~/.config/Ledgy/ledgy.db` |
+
+Use **Export** or **Settings → Download JSON backup** to keep your own copies.
+
+**If your computer warns about the app:** releases that are not signed by the developer are blocked the first time. 
+- Mac: open **System Settings → Privacy & Security**, scroll down, and click **Open Anyway** next to Ledgy. (On older macOS you can right-click the app and choose **Open**.)
+- Windows: on the blue "Windows protected your PC" screen, click **More info → Run anyway**.
+
+You only need to do this once.
+
+**Build it yourself:** `npm install`, then `npm run desktop` to run it, or `npm run dist` (Mac), `npm run dist:win`, `npm run dist:linux` to make an installer in `dist/`. Maintainers: push a tag such as `v1.0.0` and the **Release desktop app** workflow builds all three and attaches them to a GitHub release. Add the `MAC_CERT_P12_BASE64`, `MAC_CERT_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, and `APPLE_TEAM_ID` repository secrets to sign and notarize the Mac build so users see no warning.
+
+### Option B: Docker (self-hosted, about 5 minutes)
 
 You need one free program: **Docker Desktop** (Mac, Windows, or Linux). Nothing else.
 
@@ -33,7 +71,7 @@ Your data is kept by Docker and survives restarts and updates. Use **Export** or
 
 If port 3000 is already in use, add `HTTP_PORT=3001` to your `.env` file and open `http://localhost:3001` instead.
 
-## Install with Dockge
+### Docker on a server with Dockge
 
 1. Copy this folder to the Dockge stacks folder on the server, as `ledgy`:
    ```

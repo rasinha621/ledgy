@@ -2,7 +2,7 @@
   "name": "ledgy",
   "version": "1.0.0",
   "description": "Ledgy: self-hosted 50/30/20 budget app",
-  "main": "server.js",
+  "main": "electron/main.js",
   "type": "module",
   "directories": {
     "lib": "lib",
@@ -11,7 +11,11 @@
   "scripts": {
     "start": "node server.js",
     "test": "node test/verify.mjs",
-    "build:css": "tailwindcss -i build/styles.src.css -o public/styles.css --minify"
+    "build:css": "tailwindcss -i build/styles.src.css -o public/styles.css --minify",
+    "desktop": "electron .",
+    "dist": "npm run build:css && electron-builder --mac --publish never",
+    "dist:win": "npm run build:css && electron-builder --win --publish never",
+    "dist:linux": "npm run build:css && electron-builder --linux --publish never"
   },
   "license": "MIT",
   "dependencies": {
@@ -21,9 +25,60 @@
   },
   "devDependencies": {
     "@tailwindcss/cli": "^4.3.3",
+    "electron": "^45.4.1",
+    "electron-builder": "^26.18.0",
     "tailwindcss": "^4.3.3"
   },
   "overrides": {
     "uuid": "^11.1.1"
+  },
+  "author": "Ledgy",
+  "build": {
+    "appId": "io.github.rasinha621.ledgy",
+    "productName": "Ledgy",
+    "directories": {
+      "buildResources": "electron/icons",
+      "output": "dist"
+    },
+    "files": [
+      "electron/main.js",
+      "server.js",
+      "lib/**",
+      "public/**",
+      "package.json"
+    ],
+    "artifactName": "Ledgy-${version}-${os}-${arch}.${ext}",
+    "mac": {
+      "category": "public.app-category.finance",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "hardenedRuntime": true,
+      "icon": "electron/icons/icon.png"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "electron/icons/icon.png"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Office",
+      "icon": "electron/icons/icon.png"
+    }
   }
 }

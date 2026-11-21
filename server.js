@@ -250,4 +250,7 @@ app.get('/api/years/:year/backup.json', (req, res) => {
   res.set('Content-Disposition', `attachment; filename="ledgy-${y}.json"`).json(doc);
 });
 
-app.listen(PORT, () => console.log(`Ledgy on http://${process.env.LEDGY_HOST || 'localhost'}:${PORT} (data: ${DATA_DIR})`));
+// The desktop app sets BIND_ADDR=127.0.0.1 so only this computer can reach the server. Docker leaves it unset.
+const BIND_ADDR = process.env.BIND_ADDR || '';
+const onListening = () => console.log(`Ledgy on http://${process.env.LEDGY_HOST || 'localhost'}:${PORT} (data: ${DATA_DIR})`);
+export const server = BIND_ADDR ? app.listen(PORT, BIND_ADDR, onListening) : app.listen(PORT, onListening);
