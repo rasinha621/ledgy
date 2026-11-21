@@ -10,6 +10,8 @@ import { initSummary } from './js/summary.js';
 import { initDialogs } from './js/dialogs.js';
 import { initYearDialogs } from './js/year-dialogs.js';
 import { initSettings } from './js/settings.js';
+import { initIncome } from './js/income-panel.js';
+import { initProviders } from './js/providers.js';
 import { initTooltips } from './js/tooltips.js';
 
 initPrefs();
@@ -21,6 +23,8 @@ initSummary();
 initDialogs();
 initYearDialogs();
 initSettings();
+initIncome();
+initProviders();
 initTooltips();
 
 // Theme colors are resolved into the charts when they are drawn, so redraw when the system theme changes.

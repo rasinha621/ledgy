@@ -1,9 +1,12 @@
-// Settings > Income: one section per month with its paychecks (one, or two when paid bimonthly) and extra income.
-// Edits are kept in a draft and applied to the year when the settings are saved.
+// The Income dialog: one section per month with its paychecks (one, or two when paid bimonthly) and extra income.
+// Edits are kept in a draft and applied to the year when the dialog is saved.
 import { hasPayEntries, round2 } from '/lib/calc.js';
-import { $, $$, esc, storedSet, onActivate } from './dom.js';
+import { $, $$, esc, storedSet, onActivate, cancelled } from './dom.js';
 import { inputNum, toMoney } from './format.js';
 import { monthLabel } from './prefs.js';
+import { state } from './state.js';
+import { scheduleSave } from './save.js';
+import { render } from './render.js';
 
 let draft = []; let payPeriod = 'monthly';
 // Months folded shut in the panel (click a month's title to toggle). Remembered per browser.
@@ -13,7 +16,7 @@ const collapsed = storedSet('ledgy.incCollapsed', Number.isInteger);
 let focused = null;
 const isShut = (i) => (focused ? focused.has(i) : collapsed.has(i));
 const payCount = (mode) => (mode === 'bimonthly' ? 2 : 1);
-const panel = () => $('#setPanelIncome');
+const panel = () => $('#incomePanel');
 
 const field = (attrs, val, label, type = 'number') => `<label class="tf"><input type="${type}" ${type === 'number' ? 'step="any" min="0"' : 'maxlength="60" autocomplete="off"'} ${attrs} value="${esc(val ?? '')}" placeholder=" "><span>${label}</span></label>`;
 
@@ -43,23 +46,17 @@ function monthHtml(m, i) {
 
 const renderPanel = () => { panel().innerHTML = draft.map(monthHtml).join(''); };
 
-export function resetIncome(doc) {
-  payPeriod = doc.settings.payPeriod || 'monthly';
-  focused = null;
-  draft = doc.months.map((m) => ({
-    pay: [0, 1].map((p) => ({ gross: m.pay?.[p]?.gross ?? null, taxes: m.pay?.[p]?.taxes ?? null })),
-    extras: (m.extras || []).map((x) => ({ ...x })),
-  }));
-  renderPanel();
-  return payPeriod;
-}
+const toDraft = (doc) => doc.months.map((m) => ({
+  pay: [0, 1].map((p) => ({ gross: m.pay?.[p]?.gross ?? null, taxes: m.pay?.[p]?.taxes ?? null })),
+  extras: (m.extras || []).map((x) => ({ ...x })),
+}));
 
 // Write the draft into the year. Net income becomes gross minus taxes plus extras of the paychecks in use;
 // a month whose entries were all cleared goes back to no income.
-export function applyIncome(doc, mode) {
+export function applyIncome(doc, mode, entries = toDraft(doc)) {
   const cnt = payCount(mode);
   doc.months.forEach((m, i) => {
-    const d = draft[i];
+    const d = entries[i];
     const had = hasPayEntries(m.pay, m.extras);
     m.pay = d.pay.map((p) => ({ gross: toMoney(p.gross), taxes: toMoney(p.taxes) }));
     m.extras = d.extras.map((x) => ({ label: x.label.trim(), amount: toMoney(x.amount) })).filter((x) => x.label || x.amount !== null);
@@ -70,20 +67,35 @@ export function applyIncome(doc, mode) {
   });
 }
 
-// Open only one month's section (used when jumping here from a month's net income card) and bring it into view.
-export function showIncomeMonth(i) {
-  focused = new Set(draft.map((_, j) => j).filter((j) => j !== i)); renderPanel();
-  $(`#setPanelIncome [data-toggle-inc="${i}"]`)?.scrollIntoView({ block: 'start' });
+// Open the dialog. With a month index (from a month's net income card) only that month's section is expanded.
+export function openIncome(month = null) {
+  const { doc } = state;
+  payPeriod = doc.settings.payPeriod || 'monthly';
+  draft = toDraft(doc);
+  focused = month === null ? null : new Set(draft.map((_, j) => j).filter((j) => j !== month));
+  $('#incomeYearLbl').textContent = doc.year;
+  renderPanel();
+  $('#incomeDlg').showModal();
+  if (month !== null) $(`#incomePanel [data-toggle-inc="${month}"]`)?.scrollIntoView({ block: 'start' });
+}
+
+function onSubmit(e) {
+  if (cancelled(e)) return;
+  applyIncome(state.doc, payPeriod, draft);
+  scheduleSave(); render();
 }
 
 function toggle(el) {
   const i = Number(el.dataset.toggleInc);
   if (focused) { if (!focused.delete(i)) focused.add(i); } else collapsed.toggle(i);
   renderPanel();
-  $(`#setPanelIncome [data-toggle-inc="${i}"]`)?.focus();
+  $(`#incomePanel [data-toggle-inc="${i}"]`)?.focus();
 }
 
-export function initIncomePanel() {
+export function initIncome() {
+  $('#incomeBtn').addEventListener('click', () => openIncome());
+  $('#incomeClose').addEventListener('click', () => $('#incomeDlg').close());
+  $('#incomeForm').addEventListener('submit', onSubmit);
   const el = panel();
   el.addEventListener('input', (e) => {
     const t = e.target; const m = draft[t.dataset.m]; if (!m) return;
@@ -99,7 +111,6 @@ export function initIncomePanel() {
     else if (rmM !== undefined) draft[rmM].extras.splice(Number(rmX), 1);
     else return;
     renderPanel();
-    if (addExtra !== undefined) $$(`#setPanelIncome input[data-m="${addExtra}"][data-k="label"]`).pop()?.focus();
+    if (addExtra !== undefined) $$(`#incomePanel input[data-m="${addExtra}"][data-k="label"]`).pop()?.focus();
   });
-  $('#settingsForm').payPeriod.addEventListener('change', (e) => { payPeriod = e.target.value; renderPanel(); });
 }

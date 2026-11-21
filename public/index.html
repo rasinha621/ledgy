@@ -18,11 +18,13 @@
       <img class="logo" src="/icon.svg" alt="" aria-hidden="true">
       <span>Ledgy</span>
       <select id="yearSelect" aria-label="Year"></select>
+      <button id="newYearBtn" class="btn ghost">New year</button>
     </div>
     <div class="actions">
       <span id="saveState" class="save-state" aria-live="polite"></span>
-      <button id="newYearBtn" class="btn ghost">New year</button>
-      <button id="settingsBtn" class="btn ghost" aria-label="Settings">Settings</button>
+      <button id="incomeBtn" class="btn ghost" aria-label="Income" hidden>Income</button>
+      <button id="providersBtn" class="btn ghost" aria-label="Providers" hidden>Providers</button>
+      <button id="settingsBtn"class="btn ghost" aria-label="Settings">Settings</button>
       <button type="button" id="signOutBtn" class="btn ghost" hidden>Sign out</button>
     </div>
   </header>
@@ -87,13 +89,43 @@
     </form>
   </dialog>
 
+  <dialog id="incomeDlg">
+    <form method="dialog" id="incomeForm">
+      <button type="button" class="dlg-close" id="incomeClose" aria-label="Close income">&times;</button>
+      <h2>Income for <span id="incomeYearLbl"></span></h2>
+      <div id="incomePanel" class="set-panel"></div>
+      <div class="dlg-actions">
+        <span class="spacer"></span>
+        <button class="btn primary" value="default">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="providersDlg">
+    <form method="dialog" id="providersForm">
+      <button type="button" class="dlg-close" id="providersClose" aria-label="Close providers">&times;</button>
+      <h2>Providers</h2>
+      <div class="set-tabs" role="tablist">
+        <button type="button" class="set-tab" role="tab" id="provTabCards" aria-controls="provPanelCards" aria-selected="true" data-tab="cards">Credit cards</button>
+        <button type="button" class="set-tab" role="tab" id="provTabBanks" aria-controls="provPanelBanks" aria-selected="false" tabindex="-1" data-tab="banks">Bank accounts</button>
+        <button type="button" class="set-tab" role="tab" id="provTabUtils" aria-controls="provPanelUtils" aria-selected="false" tabindex="-1" data-tab="utils">Utilities</button>
+      </div>
+      <div id="provPanelCards" class="set-panel" role="tabpanel" aria-labelledby="provTabCards"></div>
+      <div id="provPanelBanks" class="set-panel" role="tabpanel" aria-labelledby="provTabBanks" hidden></div>
+      <div id="provPanelUtils" class="set-panel" role="tabpanel" aria-labelledby="provTabUtils" hidden></div>
+      <div class="dlg-actions">
+        <span class="spacer"></span>
+        <button class="btn primary" value="default">Done</button>
+      </div>
+    </form>
+  </dialog>
+
   <dialog id="settingsDlg">
     <form method="dialog" id="settingsForm">
       <button type="button" class="dlg-close" id="settingsClose" aria-label="Close settings">&times;</button>
       <h2>Settings for <span id="setYearLbl"></span></h2>
       <div class="set-tabs" role="tablist">
         <button type="button" class="set-tab" role="tab" id="setTabData" aria-controls="setPanelData" aria-selected="true" data-tab="data">General</button>
-        <button type="button" class="set-tab" role="tab" id="setTabIncome" aria-controls="setPanelIncome" aria-selected="false" tabindex="-1" data-tab="income">Income</button>
         <button type="button" class="set-tab" role="tab" id="setTabCustom" aria-controls="setPanelCustom" aria-selected="false" tabindex="-1" data-tab="custom">Customization</button>
       </div>
       <div id="setPanelData" class="set-panel" role="tabpanel" aria-labelledby="setTabData">
@@ -131,7 +163,6 @@
         </div>
       </fieldset>
       </div>
-      <div id="setPanelIncome" class="set-panel" role="tabpanel" aria-labelledby="setTabIncome" hidden></div>
       <div id="setPanelCustom" class="set-panel" role="tabpanel" aria-labelledby="setTabCustom" hidden>
       <fieldset>
         <legend>Preferences (this browser)</legend>

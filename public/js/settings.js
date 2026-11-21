@@ -1,4 +1,4 @@
-// The settings dialog: budget rates and limits (Data), paychecks (Income), and per-browser look (Customize).
+// The settings dialog: budget rates and limits (Data), and per-browser look (Customize).
 // Customize changes preview live and are dropped again on Cancel or Escape.
 import { syncGoals } from '/lib/calc.js';
 import { $, $$, cancelled } from './dom.js';
@@ -10,16 +10,16 @@ import { render, loadYears } from './render.js';
 import { askDialog } from './dialogs.js';
 import { draftSeed, resetSeedPicker, initSeedPicker } from './seed-picker.js';
 import { resetGoals, draftGoals, draftCols, initGoalsPanel } from './goals-panel.js';
-import { resetIncome, applyIncome, initIncomePanel, showIncomeMonth } from './income-panel.js';
+import { applyIncome } from './income-panel.js';
 
 const form = () => $('#settingsForm');
-const PANELS = { data: '#setPanelData', custom: '#setPanelCustom', income: '#setPanelIncome' };
+const PANELS = { data: '#setPanelData', custom: '#setPanelCustom' };
 const RATES = ['wantsRate', 'needsRate', 'savingsRate'];
 const LIMITS = ['limit401k', 'limitHsa', 'limitRoth'];
 const LOOK = ['theme', 'density', 'monthStyle', 'entryStyle'];
 
 function showSettingsTab(name) {
-  $$('.set-tab').forEach((t) => { const on = t.dataset.tab === name; t.setAttribute('aria-selected', on); t.tabIndex = on ? 0 : -1; });
+  $$('#settingsDlg .set-tab').forEach((t) => { const on = t.dataset.tab === name; t.setAttribute('aria-selected', on); t.tabIndex = on ? 0 : -1; });
   for (const [k, sel] of Object.entries(PANELS)) $(sel).hidden = k !== name;
 }
 
@@ -30,7 +30,7 @@ const draftLook = () => {
 };
 const previewDraft = () => applyPrefs({ ...state.prefs, ...draftLook() });
 
-export function openSettings(tabName = 'data', incomeMonth = null) {
+export function openSettings(tabName = 'data') {
   showSettingsTab(tabName);
   const f = form(); const { doc, prefs } = state; const s = doc.settings;
   $('#setYearLbl').textContent = doc.year;
@@ -42,9 +42,8 @@ export function openSettings(tabName = 'data', incomeMonth = null) {
   $('#backupLink').href = `/api/years/${doc.year}/backup.json`;
   resetGoals(s.goals, prefs.savingsCols);
   resetSeedPicker(prefs.seed);
-  f.payPeriod.value = resetIncome(doc);
+  f.payPeriod.value = s.payPeriod || 'monthly';
   $('#settingsDlg').showModal();
-  if (incomeMonth !== null) showIncomeMonth(incomeMonth);
 }
 
 function onSubmit(e) {
@@ -79,7 +78,6 @@ export function initSettings() {
   const f = form();
   initSeedPicker(previewDraft);
   initGoalsPanel();
-  initIncomePanel();
   for (const k of ['theme', 'density', 'entryStyle']) f[k].addEventListener('change', previewDraft);
   f.addEventListener('submit', onSubmit);
   // Cancel, Escape or Save: drop the live preview and use the saved preferences.
@@ -88,11 +86,11 @@ export function initSettings() {
   $('#settingsClose').addEventListener('click', () => $('#settingsDlg').close());
   $('#deleteYearBtn').addEventListener('click', deleteYear);
 
-  const tabs = $('.set-tabs');
+  const tabs = $('#settingsDlg .set-tabs');
   tabs.addEventListener('click', (e) => { const t = e.target.closest('.set-tab'); if (t) showSettingsTab(t.dataset.tab); });
   tabs.addEventListener('keydown', (e) => {
     if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
-    const all = $$('.set-tab');
+    const all = $$('#settingsDlg .set-tab');
     const cur = all.findIndex((t) => t.getAttribute('aria-selected') === 'true');
     const next = all[(cur + (e.key === 'ArrowRight' ? 1 : all.length - 1)) % all.length]; showSettingsTab(next.dataset.tab); next.focus();
   });
