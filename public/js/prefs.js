@@ -1,4 +1,4 @@
-// Per-browser preferences: theme, density, month names, entry style, Summary columns and the seed color.
+// Per-browser preferences: theme, density, month names, entry style, button labels, Summary columns and the seed color.
 import { syncIcon } from '/icon.js';
 import { isHex, applySeed } from '/seed.js';
 import { MONTHS } from '/lib/calc.js';
@@ -26,6 +26,7 @@ function loadPrefs() {
     theme: ['light', 'dark'].includes(p.theme) ? p.theme : 'auto',
     density: p.density === 'compact' ? 'compact' : 'normal',
     monthStyle: MONTH_STYLES[p.monthStyle] ? p.monthStyle : 'upper',
+    labels: ['icons', 'text'].includes(p.labels) ? p.labels : 'both',
     entryStyle: p.entryStyle === 'plain' ? 'plain' : 'boxed',
     savingsCols: Array.isArray(p.savingsCols) ? [...SAV_COLS.filter((k) => p.savingsCols.includes(k)), ...p.savingsCols.filter((k) => /^goal:[a-z0-9]{1,16}$/.test(k))] : [],
     seed: isHex(p.seed) ? p.seed.toLowerCase() : null,
@@ -41,6 +42,7 @@ export function applyPrefs(p = state.prefs) {
   const flag = (name, value) => { if (value) root.dataset[name] = value; else delete root.dataset[name]; };
   flag('theme', p.theme !== 'auto' && p.theme);
   flag('density', p.density === 'compact' && 'compact');
+  flag('labels', p.labels !== 'both' && p.labels);
   flag('entries', p.entryStyle === 'plain' && 'plain');
   applySeed(root, p.seed);
   syncIcon();

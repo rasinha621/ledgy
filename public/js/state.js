@@ -4,7 +4,7 @@ export const state = {
   doc: null,        // the open year
   tab: 0,           // 0..11 or 'summary'
   prefs: null,      // per-browser preferences (see prefs.js)
-  donutDrill: false, // month donut shows the savings rows instead of the categories
+  donutDrill: false, // month donut drills into 'savings' or 'needs' rows instead of the categories
   pieDrill: false,   // summary pie shows the savings rows
   hideTaxes: false,  // month donut leaves taxes out
 };

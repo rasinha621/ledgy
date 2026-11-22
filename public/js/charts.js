@@ -3,7 +3,7 @@
 import { DEFAULT_SAVINGS, needsRowValue, round2 } from '/lib/calc.js';
 import { esc } from './dom.js';
 import { usd, pct } from './format.js';
-import { cssVar, savingsShades } from './colors.js';
+import { cssVar, savingsShades, shades } from './colors.js';
 
 export const charts = {}; // live charts of the current view, by name
 
@@ -67,7 +67,7 @@ export function paintRing(chart, parts, values = parts.map((p) => Math.max(0, p.
 export const drillHandlers = (canToggle, toggle) => {
   const label = (els, chart) => chart.data.labels[els[0]?.index];
   return {
-    onClick: (_e, els, chart) => { if (canToggle(label(els, chart))) toggle(); },
+    onClick: (_e, els, chart) => { const l = label(els, chart); if (canToggle(l)) toggle(l); },
     onHover: (_e, els, chart) => { chart.canvas.style.cursor = canToggle(label(els, chart)) ? 'pointer' : 'default'; },
   };
 };
@@ -75,7 +75,15 @@ export const drillHandlers = (canToggle, toggle) => {
 // HTML legend rows: swatch, label, amount and share. attrs makes a row clickable (see drillAttrs).
 export const legendRow = ({ label, value, color }, share, attrs = '') => `<div${attrs}><span class="swatch" style="background:${color}"></span><span>${esc(label)}</span><span>${usd(value)}</span><span class="pct">${share === null ? '—' : pct(share)}</span></div>`;
 export const legendTotal = (total) => `<div class="legend-total"><span></span><span>Total</span><span>${usd(total)}</span><span class="pct">${total ? '100.00%' : '—'}</span></div>`;
-export const drillAttrs = (name) => ` class="drillable" data-drill="${name}" tabindex="0" role="button"`;
+export const drillAttrs = (name, kind = '') => ` class="drillable" data-drill="${name}"${kind ? ` data-kind="${kind}"` : ''} tabindex="0" role="button"`;
+
+// One month's needs rows, largest first, with the same shading as the savings breakdown.
+export function needsBreakdown(m) {
+  const items = m.needs.map((r, i) => ({ label: r.label.trim() || `Row ${i + 2}`, value: round2(needsRowValue(r, m)) }))
+    .filter((l) => l.value > 0).sort((a, b) => b.value - a.value);
+  const colors = shades('--needs', items.length);
+  return items.map((l, i) => ({ ...l, color: colors[i] }));
+}
 
 // Savings rows summed across the given months, grouped like the Summary table: the first five rows by position
 // (401k, HSA, Roth, Cash, Investing, whatever a month calls them) and any extra rows by label, largest first.

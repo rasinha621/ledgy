@@ -40,7 +40,7 @@ function monthHtml(m, i) {
     <div style="display:grid;gap:1rem" ${shut ? 'hidden' : ''}>
     ${pays}
     ${extras}
-    <div><button type="button" class="btn" data-add-extra="${i}">${icon("plus")}Add extra income</button></div>
+    <div><button type="button" class="btn" data-add-extra="${i}">${icon("plus")}<span class="lbl">Add extra income</span></button></div>
     </div>
   </fieldset>`;
 }

@@ -10,7 +10,8 @@ export function resolveColor(css) {
 export const cssVar = (name) => resolveColor(`var(${name})`);
 
 // n shades of the savings color, fading toward the surface color.
-export function savingsShades(n) {
-  const base = cssVar('--savings'); const bg = cssVar('--surface');
+export const savingsShades = (n) => shades('--savings', n);
+export function shades(varName, n) {
+  const base = cssVar(varName); const bg = cssVar('--surface');
   return Array.from({ length: n }, (_, i) => resolveColor(`color-mix(in oklch, ${base} ${Math.round(100 - (i * 55) / Math.max(n, 1))}%, ${bg})`));
 }
