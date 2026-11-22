@@ -13,10 +13,10 @@ let paintPie = null; // redraws the pie of the current Summary
 function totalCell([, v, limit, goal]) {
   if (!(limit > 0)) return `<td>${usd(v)}</td>`;
   const met = v >= limit - 0.005;
-  if (goal) return met ? `<td class="met" title="Goal met">${usd(v)}</td>` : `<td title="Goal ${esc(usd(limit))}">${usd(v)}</td>`;
-  if (v > limit + 0.005) return `<td class="over" title="Over the ${esc(usd(limit))} limit">${usd(v)}</td>`;
-  if (met) return `<td class="met" title="Annual limit met">${usd(v)}</td>`;
-  return `<td title="Limit ${esc(usd(limit))}">${usd(v)}</td>`;
+  if (goal) return met ? `<td class="met" title="Goal met">${usd(v)}</td>` : `<td title="Goal: ${esc(usd(limit))}">${usd(v)}</td>`;
+  if (v > limit + 0.005) return `<td class="over" title="More than the limit of ${esc(usd(limit))}">${usd(v)}</td>`;
+  if (met) return `<td class="met" title="Yearly limit reached">${usd(v)}</td>`;
+  return `<td title="Limit: ${esc(usd(limit))}">${usd(v)}</td>`;
 }
 
 function summaryHtml(s) {

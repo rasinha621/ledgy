@@ -33,7 +33,7 @@ function rowHtml(sec, r, i) {
   const { ph } = secMeta(sec);
   const val = link ? linkedValue(r) : esc(amtShow(r.amount));
   const sum = sec === 'savings' && i < DEFAULT_SAVINGS.length ? `Summary: ${DEFAULT_SAVINGS[i]}. ` : '';
-  const hint = isGroup(sec) ? ` title="${sum}${link ? `Total of ${esc(link.title)}. Type a number to unlink.` : 'Type an amount, or pick a list to total'}"` : '';
+  const hint = isGroup(sec) ? ` title="${sum}${link ? `Total of ${esc(link.title)}. To unlink, type a number.` : 'Type an amount or pick a list to show its total.'}"` : '';
   const blank = !link && (r.amount === null || r.amount === undefined) && !r.label;
   return `<li class="row${blank ? ' blank' : ''}" data-i="${i}">
     <label class="tf"><input class="amt ${n(r.amount) < 0 ? 'neg' : ''} ${link ? 'linked' : ''}" data-i="${i}" inputmode="decimal" autocomplete="off" value="${val}" placeholder=" " aria-label="Amount"${hint}><span>Amount</span></label>
@@ -79,7 +79,7 @@ export function renderMonth() {
   const secs = [...GROUPS, ...baseLists(m).map((l) => l.key), ...(m.sections || []).map((s) => s.key)];
   $('#view').innerHTML = `
     <div class="kpis"><div class="kpis-main">
-      <div class="kpi" role="button" tabindex="0" data-act="open-income" style="cursor:pointer" title="Edit income in Settings"><div class="k">Net income </div><div class="v">${usd(m.income)}</div></div>
+      <div class="kpi" role="button" tabindex="0" data-act="open-income" style="cursor:pointer" title="Change your income"><div class="k">Net income </div><div class="v">${usd(m.income)}</div></div>
       ${kpi('allocated', 'Allocated')}
       ${kpi('allocatedPct', 'Percent allocated')}
       </div>
