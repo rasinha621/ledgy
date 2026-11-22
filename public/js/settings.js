@@ -16,7 +16,7 @@ const form = () => $('#settingsForm');
 const PANELS = { data: '#setPanelData', custom: '#setPanelCustom' };
 const RATES = ['wantsRate', 'needsRate', 'savingsRate'];
 const LIMITS = ['limit401k', 'limitHsa', 'limitRoth'];
-const LOOK = ['theme', 'density', 'monthStyle', 'entryStyle'];
+const LOOK = ['theme', 'density', 'monthStyle', 'entryStyle', 'labels'];
 
 function showSettingsTab(name) {
   $$('#settingsDlg .set-tab').forEach((t) => { const on = t.dataset.tab === name; t.setAttribute('aria-selected', on); t.tabIndex = on ? 0 : -1; });
@@ -78,10 +78,12 @@ export function initSettings() {
   const f = form();
   initSeedPicker(previewDraft);
   initGoalsPanel();
-  for (const k of ['theme', 'density', 'entryStyle']) f[k].addEventListener('change', previewDraft);
+  for (const k of ['theme', 'density', 'entryStyle', 'labels']) f[k].addEventListener('change', previewDraft);
   f.addEventListener('submit', onSubmit);
   // Cancel, Escape or Save: drop the live preview and use the saved preferences.
   $('#settingsDlg').addEventListener('close', () => applyPrefs());
+  $('#helpBtn').addEventListener('click', () => $('#helpDlg').showModal());
+  $('#helpClose').addEventListener('click', () => $('#helpDlg').close());
   $('#settingsBtn').addEventListener('click', () => openSettings());
   $('#settingsClose').addEventListener('click', () => $('#settingsDlg').close());
   $('#deleteYearBtn').addEventListener('click', deleteYear);

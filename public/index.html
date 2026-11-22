@@ -23,6 +23,7 @@
     <div class="actions">
       <span id="saveState" class="save-state" aria-live="polite"></span>
       <button id="incomeBtn" class="btn ghost" aria-label="Income" hidden data-icon="banknotes">Income</button>
+      <button type="button" id="helpBtn" class="btn ghost" aria-label="Help" data-icon="question-mark-circle">Help</button>
       <button id="settingsBtn" class="btn ghost" aria-label="Settings" data-icon="cog-6-tooth">Settings</button>
       <button type="button" id="signOutBtn" class="btn ghost" hidden data-icon="arrow-right-on-rectangle">Sign out</button>
     </div>
@@ -100,6 +101,61 @@
     </form>
   </dialog>
 
+  <dialog id="helpDlg" class="help">
+    <form method="dialog" id="helpForm">
+      <button type="button" class="dlg-close" id="helpClose" aria-label="Close help" data-icon="x-mark"></button>
+      <h2>Help</h2>
+      <section>
+        <h3>Categories</h3>
+        <p>Each month has three budget categories. Each category is a card on the month page.</p>
+        <dl>
+          <dt>Wants</dt><dd>Things that you want but do not need. Examples are restaurants, hobbies and trips.</dd>
+          <dt>Needs</dt><dd>Costs that you must pay. Examples are rent, utilities, insurance and food.</dd>
+          <dt>Savings</dt><dd>Money that you keep for the future. The default rows are 401k, HSA, Roth, Cash and Investing.</dd>
+          <dt>Groceries and Transit</dt><dd>These are lists. A list adds up the items that you type in it. A row in Needs can show the total of a list.</dd>
+          <dt>Your own lists</dt><dd>Select <strong>Add new category</strong> to make a list. Put the list in Wants, Needs or Savings.</dd>
+        </dl>
+        <p>The top of the month page shows these values:</p>
+        <dl>
+          <dt>Net income</dt><dd>The money that you receive after tax. Select it to open the Income window.</dd>
+          <dt>Allocated</dt><dd>The sum of Wants, Needs and Savings.</dd>
+          <dt>Amount remaining</dt><dd>Net income minus Allocated. A negative value means that you spend more than you earn.</dd>
+        </dl>
+      </section>
+      <section>
+        <h3>50/30/20 budget</h3>
+        <p>The 50/30/20 rule divides your net income into three parts:</p>
+        <ul>
+          <li>50% for Needs.</li>
+          <li>30% for Wants.</li>
+          <li>20% for Savings.</li>
+        </ul>
+        <p>To use this rule in Ledgy, do these steps:</p>
+        <ol>
+          <li>Select <strong>Settings</strong>, then the <strong>General</strong> tab.</li>
+          <li>In <strong>Budget breakdown</strong>, set Needs to 50, Wants to 30 and Savings to 20. These are the default values.</li>
+          <li>Select <strong>Income</strong> and enter your pay for each month.</li>
+          <li>Enter your costs in each category.</li>
+        </ol>
+        <p>Each card shows its budget and the percent that you have used. Aim to keep each percent at 100% or less.</p>
+      </section>
+      <section>
+        <h3>Contribution limits</h3>
+        <p>Each year, the IRS sets a maximum amount that you can put in each account. The limits change almost every year. Ledgy does not know the limits. Find them and enter them yourself.</p>
+        <dl>
+          <dt>401k</dt><dd>Search for "IRS 401(k) limits". The IRS publishes the new limit in a news release in the fall.</dd>
+          <dt>HSA</dt><dd>Search for "IRS HSA limits". The limit is in the yearly IRS Revenue Procedure. The limit is different for self-only and family coverage. People age 55 or older can add an extra amount.</dd>
+          <dt>Roth</dt><dd>Search for "IRS IRA contribution limits". The Roth IRA limit is the same as the IRA limit. A high income can decrease your limit. Depending on your income, you may not be able to contribute to a Roth IRA.</dd>
+        </dl>
+        <p>To enter a limit, select <strong>Settings</strong>, then <strong>General</strong>. Type the value in <strong>Annual contribution limits</strong>. The Summary page then shows your progress for each year. If you type 0, Ledgy shows no limit.</p>
+      </section>
+      <div class="dlg-actions">
+        <span class="spacer"></span>
+        <button class="btn primary" value="default">Close</button>
+      </div>
+    </form>
+  </dialog>
+
   <dialog id="settingsDlg">
     <form method="dialog" id="settingsForm">
       <button type="button" class="dlg-close" id="settingsClose" aria-label="Close settings" data-icon="x-mark"></button>
@@ -151,6 +207,7 @@
           <label class="tf sel"><select name="monthStyle"><option value="upper">JAN</option><option value="title">Jan</option><option value="num">MM/YY</option><option value="full">January</option></select><span>Month style</span></label>
           <label class="tf sel"><select name="density"><option value="normal">Normal</option><option value="compact">Compact</option></select><span>Density</span></label>
           <label class="tf sel"><select name="entryStyle"><option value="boxed">Boxed</option><option value="plain">No boxes</option></select><span>Spending entries</span></label>
+          <label class="tf sel"><select name="labels"><option value="both">Icons and text</option><option value="icons">Icons only</option><option value="text">Text only</option></select><span>Button labels</span></label>
         </div>
         <div class="seed-group">
           <div class="muted">Theme color</div>

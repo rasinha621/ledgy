@@ -137,7 +137,7 @@ export function initMonthEvents() {
   view.addEventListener('focusout', onFocusOut);
   view.addEventListener('paste', onPaste);
   onActivate(view, '[data-toggle-card]', (el) => toggleCard(el.dataset.toggleCard), 'button');
-  onActivate(view, '[data-drill="donut"]', toggleDonut);
+  onActivate(view, '[data-drill="donut"]', (el) => toggleDonut(el.dataset.kind));
   onActivate(view, '[data-toggle="taxes"]', () => { state.hideTaxes = !state.hideTaxes; refresh(); });
   onActivate(view, '[data-act="open-income"]', () => openIncome(state.tab));
 }

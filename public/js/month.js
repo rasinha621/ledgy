@@ -66,7 +66,7 @@ function cardHtml(sec) {
       <input class="qa-lbl" placeholder="${esc(meta.ph)}" aria-label="${esc(meta.ph)}">
       <button class="qa-add" type="submit" aria-label="Add transaction" title="Add transaction">${icon("plus")}</button>
     </form>` : `<ul class="rows">${rows.map((r, i) => rowHtml(sec, r, i)).join('')}</ul>
-    <button class="add" data-add="${sec}">${icon("plus")}Add row</button>
+    <button class="add" data-add="${sec}">${icon("plus")}<span class="lbl">Add row</span></button>
     ${foot}`}
   </section>`;
 }
@@ -86,7 +86,7 @@ export function renderMonth() {
     </div>
     <div class="month-grid">
       <div class="cols">${secs.map(cardHtml).join('')}
-        <button class="add-list" data-act="sec-add">${icon("plus")}Add new category</button></div>
+        <button class="add-list" data-act="sec-add">${icon("plus")}<span class="lbl">Add new category</span></button></div>
       <aside class="side">
         <section class="card chart-card">
           <h3>Spending breakdown</h3>
@@ -94,18 +94,13 @@ export function renderMonth() {
           <div class="chart-box"><canvas id="donut" aria-label="Spending breakdown chart" role="img"></canvas></div>
           <div class="legend" id="donutLegend"></div>
         </section>
-        <section class="card chart-card">
-          <h3>Needs by line</h3>
-          <div class="sub">Largest lines first. Rows linked to a list show that list’s total.</div>
-          <div class="chart-box" id="needsBox"><canvas id="needsBar" aria-label="Needs by line chart" role="img"></canvas></div>
-        </section>
       </aside>
     </div>`;
   buildMonthCharts(toggleDonut);
   refresh();
 }
 
-export function toggleDonut() { state.donutDrill = !state.donutDrill; refresh(); }
+export function toggleDonut(kind) { const k = String(kind).toLowerCase(); state.donutDrill = state.donutDrill || !['savings', 'needs'].includes(k) ? false : k; refresh(); }
 
 // Update totals, meters, linked amounts and charts without rebuilding the cards (so typing keeps focus).
 export function refresh() {

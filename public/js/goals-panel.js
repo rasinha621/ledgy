@@ -12,7 +12,7 @@ function renderGoals() {
     <label class="tf"><input type="text" maxlength="60" autocomplete="off" data-goal="${i}" data-k="name" value="${esc(g.name)}" placeholder=" "><span>Savings goal</span></label>
     <label class="tf"><input type="number" step="any" min="0" data-goal="${i}" data-k="target" value="${esc(g.target ?? '')}" placeholder=" "><span>Target $</span></label>
     <button type="button" class="btn ghost" data-rm-goal="${i}" aria-label="Remove savings goal" title="Remove">${icon("trash")}</button>
-  </div>`).join('') + `<div style="margin-top:12px"><button type="button" class="btn" id="addGoalBtn">${icon('plus')}Add savings goal</button></div>`;
+  </div>`).join('') + `<div style="margin-top:12px"><button type="button" class="btn" id="addGoalBtn">${icon('plus')}<span class="lbl">Add savings goal</span></button></div>`;
 }
 
 function renderCols() {
