@@ -11,7 +11,7 @@ import { renderSummary } from './summary.js';
 
 const emptyState = () => `<div class="empty">
     <h1>No budget yet</h1>
-    <p class="muted">Import your spreadsheet to bring in all months, or start a blank year. Each month uses the same layout: Wants, Needs and Savings with budgets from your income.</p>
+    <p class="muted">Import your spreadsheet to add all months. Or start a blank year. Each month has the same layout: Wants, Needs, and Savings. The budgets come from your income.</p>
     <div class="btns"><button class="btn primary" data-act="import">Import</button><button class="btn tonal" data-act="new">Start a new year</button></div>
   </div>`;
 
@@ -19,6 +19,7 @@ export function render() {
   destroyCharts();
   const { doc } = state;
   $('#settingsBtn').hidden = !doc;
+  $('#incomeBtn').hidden = !doc;
   if (!doc) { $('#tabs').innerHTML = ''; $('#view').innerHTML = emptyState(); return; }
   $('#exportBtn').href = `/api/years/${doc.year}/export.xlsx`;
   renderTabs();
@@ -31,7 +32,7 @@ export function renderTabs() {
   const tab = (key, label, extra = '') => `<button class="tab${key === 'summary' ? ' sum' : ''}" role="tab" data-tab="${key}" aria-selected="${state.tab === key}"${extra}>${label}</button>`;
   $('#tabs').innerHTML = MONTHS.map((_, i) => {
     const { over, covered } = draw[i];
-    const note = covered ? 'Over income, covered by savings' : over ? 'Over income' : '';
+    const note = covered ? 'Spending is more than income. Savings cover it.' : over ? 'Spending is more than income.' : '';
     return tab(i, `${monthLabel(i)}${over ? `<span class="dot${covered ? ' warn' : ''}" aria-label="${note.toLowerCase()}"></span>` : ''}`, ` title="${note}"`);
   }).join('') + tab('summary', 'Summary');
 }

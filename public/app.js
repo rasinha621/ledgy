@@ -10,7 +10,9 @@ import { initSummary } from './js/summary.js';
 import { initDialogs } from './js/dialogs.js';
 import { initYearDialogs } from './js/year-dialogs.js';
 import { initSettings } from './js/settings.js';
+import { initIncome } from './js/income-panel.js';
 import { initTooltips } from './js/tooltips.js';
+import { hydrateIcons } from './js/icons.js';
 
 initPrefs();
 initSave();
@@ -21,7 +23,9 @@ initSummary();
 initDialogs();
 initYearDialogs();
 initSettings();
+initIncome();
 initTooltips();
+hydrateIcons();
 
 // Theme colors are resolved into the charts when they are drawn, so redraw when the system theme changes.
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { applyPrefs(); if (state.doc) render(); });

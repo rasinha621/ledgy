@@ -18,12 +18,13 @@
       <img class="logo" src="/icon.svg" alt="" aria-hidden="true">
       <span>Ledgy</span>
       <select id="yearSelect" aria-label="Year"></select>
+      <button id="newYearBtn" class="btn ghost" data-icon="calendar-days">New year</button>
     </div>
     <div class="actions">
       <span id="saveState" class="save-state" aria-live="polite"></span>
-      <button id="newYearBtn" class="btn ghost">New year</button>
-      <button id="settingsBtn" class="btn ghost" aria-label="Settings">Settings</button>
-      <button type="button" id="signOutBtn" class="btn ghost" hidden>Sign out</button>
+      <button id="incomeBtn" class="btn ghost" aria-label="Income" hidden data-icon="banknotes">Income</button>
+      <button id="settingsBtn" class="btn ghost" aria-label="Settings" data-icon="cog-6-tooth">Settings</button>
+      <button type="button" id="signOutBtn" class="btn ghost" hidden data-icon="arrow-right-on-rectangle">Sign out</button>
     </div>
   </header>
 
@@ -45,7 +46,7 @@
   <dialog id="importDlg">
     <form method="dialog" id="importForm">
       <h2>Import</h2>
-      <p class="muted">Use a workbook with sheets JAN…DEC and Summary in the same layout as your budget file, or a JSON backup downloaded from here.</p>
+      <p class="muted">Use an Excel file with sheets JAN to DEC and Summary. The layout must be the same as in your budget file. You can also use a JSON backup from this app.</p>
       <label class="tf file"><input type="file" id="importFile" accept=".xlsx,.json" required><span>File</span></label>
       <label class="tf"><input type="number" id="importYear" min="1900" max="3000" required placeholder=" "><span>Year</span></label>
       <div id="importMsg" class="dlg-msg"></div>
@@ -61,7 +62,7 @@
       <h2>New year</h2>
       <label class="tf"><input type="number" id="newYear" min="1900" max="3000" required placeholder=" "><span>Year</span></label>
       <label class="tf sel"><select id="newFrom"><option value="">Blank template</option></select><span>Start from</span></label>
-      <p class="muted">Copying a year takes the Needs labels and the Savings rows of its December. Amounts stay blank.</p>
+      <p class="muted">The copy keeps the Needs labels and the Savings rows from December of that year. All amounts are blank.</p>
       <div class="dlg-actions">
         <button value="cancel" class="btn ghost" formnovalidate>Cancel</button>
         <button class="btn primary" value="default">Create</button>
@@ -79,7 +80,7 @@
         <label class="check"><input type="radio" name="group" value="wants"> Want</label>
         <label class="check"><input type="radio" name="group" value="savings"> Saving</label>
       </fieldset>
-      <p class="muted">Rows in that column can total this list by typing its name or picking it in the amount box.</p>
+      <p class="muted">A row in that column can show the total of this list. In the amount box, type the list name or pick the list.</p>
       <div class="dlg-actions">
         <button value="cancel" class="btn ghost" formnovalidate>Cancel</button>
         <button class="btn primary" value="default">Save</button>
@@ -87,13 +88,24 @@
     </form>
   </dialog>
 
+  <dialog id="incomeDlg">
+    <form method="dialog" id="incomeForm">
+      <button type="button" class="dlg-close" id="incomeClose" aria-label="Close income" data-icon="x-mark"></button>
+      <h2>Income for <span id="incomeYearLbl"></span></h2>
+      <div id="incomePanel" class="set-panel"></div>
+      <div class="dlg-actions">
+        <span class="spacer"></span>
+        <button class="btn primary" value="default">Save</button>
+      </div>
+    </form>
+  </dialog>
+
   <dialog id="settingsDlg">
     <form method="dialog" id="settingsForm">
-      <button type="button" class="dlg-close" id="settingsClose" aria-label="Close settings">&times;</button>
+      <button type="button" class="dlg-close" id="settingsClose" aria-label="Close settings" data-icon="x-mark"></button>
       <h2>Settings for <span id="setYearLbl"></span></h2>
       <div class="set-tabs" role="tablist">
         <button type="button" class="set-tab" role="tab" id="setTabData" aria-controls="setPanelData" aria-selected="true" data-tab="data">General</button>
-        <button type="button" class="set-tab" role="tab" id="setTabIncome" aria-controls="setPanelIncome" aria-selected="false" tabindex="-1" data-tab="income">Income</button>
         <button type="button" class="set-tab" role="tab" id="setTabCustom" aria-controls="setPanelCustom" aria-selected="false" tabindex="-1" data-tab="custom">Customization</button>
       </div>
       <div id="setPanelData" class="set-panel" role="tabpanel" aria-labelledby="setTabData">
@@ -125,13 +137,12 @@
       <fieldset>
         <legend>Data</legend>
         <div class="data-actions">
-          <button type="button" id="importBtn" class="btn" title="Import an .xlsx file or JSON backup">Import</button>
-          <a id="exportBtn" class="btn" href="#" download title="Download as .xlsx with formulas">Export</a>
-          <a id="backupLink" class="btn" href="#" download title="Download this year as JSON">JSON backup</a>
+          <button type="button" id="importBtn" class="btn" data-icon="arrow-up-tray" title="Import an Excel file or a JSON backup">Import</button>
+          <a id="exportBtn" class="btn" data-icon="arrow-down-tray" href="#" download title="Download an Excel file (.xlsx) with formulas">Export</a>
+          <a id="backupLink" class="btn" data-icon="document-arrow-down" href="#" download title="Download this year as a JSON file">JSON backup</a>
         </div>
       </fieldset>
       </div>
-      <div id="setPanelIncome" class="set-panel" role="tabpanel" aria-labelledby="setTabIncome" hidden></div>
       <div id="setPanelCustom" class="set-panel" role="tabpanel" aria-labelledby="setTabCustom" hidden>
       <fieldset>
         <legend>Preferences (this browser)</legend>
@@ -154,7 +165,7 @@
       <fieldset>
         <legend>Summary: savings columns</legend>
         <div class="grid3" id="savingsColsBox"></div>
-        <p class="muted">Total Income, Wants, Needs and Savings are always shown.</p>
+        <p class="muted">The Summary always shows Total Income, Wants, Needs, and Savings.</p>
       </fieldset>
       </div>
       <div class="dlg-actions">

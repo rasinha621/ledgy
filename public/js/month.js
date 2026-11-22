@@ -1,6 +1,7 @@
 // The month tab: KPIs, one card per category with its rows, and the charts beside them.
 import { GROUPS, DEFAULT_SAVINGS, baseLists, calcDrawdown, calcMonth, needsRowValue, listRows, sumRows, n } from '/lib/calc.js';
 import { $, $$, esc, storedSet } from './dom.js';
+import { icon } from './icons.js';
 import { fmt, usd, pct, amtShow } from './format.js';
 import { state, onSummary, curMonth } from './state.js';
 import { SEC, isGroup, sumLists, secMeta, rowsOf, newRow, linkedList } from './lists.js';
@@ -33,16 +34,14 @@ function rowHtml(sec, r, i) {
   const { ph } = secMeta(sec);
   const val = link ? linkedValue(r) : esc(amtShow(r.amount));
   const sum = sec === 'savings' && i < DEFAULT_SAVINGS.length ? `Summary: ${DEFAULT_SAVINGS[i]}. ` : '';
-  const hint = isGroup(sec) ? ` title="${sum}${link ? `Total of ${esc(link.title)}. Type a number to unlink.` : 'Type an amount, or pick a list to total'}"` : '';
+  const hint = isGroup(sec) ? ` title="${sum}${link ? `Total of ${esc(link.title)}. To unlink, type a number.` : 'Type an amount or pick a list to show its total.'}"` : '';
   const blank = !link && (r.amount === null || r.amount === undefined) && !r.label;
   return `<li class="row${blank ? ' blank' : ''}" data-i="${i}">
     <label class="tf"><input class="amt ${n(r.amount) < 0 ? 'neg' : ''} ${link ? 'linked' : ''}" data-i="${i}" inputmode="decimal" autocomplete="off" value="${val}" placeholder=" " aria-label="Amount"${hint}><span>Amount</span></label>
     <input class="lbl" data-i="${i}" value="${esc(r.label)}" placeholder="${link ? `Σ ${esc(link.title)}` : ph}" aria-label="${ph}">
-    <button class="icon-btn del" data-i="${i}" aria-label="Delete row" title="Delete row">✕</button>
+    <button class="icon-btn del" data-i="${i}" aria-label="Delete row" title="Delete row">${icon("trash")}</button>
   </li>`;
 }
-
-const ADD_ICON = '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" fill="none"/></svg>';
 
 function cardHtml(sec) {
   const rows = rowsOf(curMonth(), sec);
@@ -58,16 +57,16 @@ function cardHtml(sec) {
   return `<section class="card${isCol ? ' collapsed' : ''}" data-sec="${sec}">
     <div class="card-h" data-toggle-card="${sec}" role="button" tabindex="0" aria-expanded="${!isCol}" title="${isCol ? 'Expand' : 'Collapse'}">
       <div class="card-t"><span class="swatch" style="background:var(${meta.color})"></span>${esc(meta.title)}
-        ${budgeted ? '' : `<button class="icon-btn sec-btn" data-act="sec-rename" data-key="${sec}" aria-label="Edit list" title="Edit list">✎</button><button class="icon-btn sec-btn" data-act="sec-del" data-key="${sec}" aria-label="Delete list" title="Delete list">✕</button>`}
+        ${budgeted ? '' : `<button class="icon-btn sec-btn" data-act="sec-rename" data-key="${sec}" aria-label="Edit list" title="Edit list">${icon("pencil")}</button><button class="icon-btn sec-btn" data-act="sec-del" data-key="${sec}" aria-label="Delete list" title="Delete list">${icon("trash")}</button>`}
         <span class="total" data-k="${sec}Total"></span></div>
       ${sub}
     </div>
     ${isCol ? `<form class="quick" data-quick="${sec}" autocomplete="off">
       <input class="qa-amt" inputmode="decimal" placeholder="Amount" aria-label="Amount">
       <input class="qa-lbl" placeholder="${esc(meta.ph)}" aria-label="${esc(meta.ph)}">
-      <button class="qa-add" type="submit" aria-label="Add transaction" title="Add transaction">${ADD_ICON}</button>
+      <button class="qa-add" type="submit" aria-label="Add transaction" title="Add transaction">${icon("plus")}</button>
     </form>` : `<ul class="rows">${rows.map((r, i) => rowHtml(sec, r, i)).join('')}</ul>
-    <button class="add" data-add="${sec}">+ Add row</button>
+    <button class="add" data-add="${sec}">${icon("plus")}Add row</button>
     ${foot}`}
   </section>`;
 }
@@ -79,7 +78,7 @@ export function renderMonth() {
   const secs = [...GROUPS, ...baseLists(m).map((l) => l.key), ...(m.sections || []).map((s) => s.key)];
   $('#view').innerHTML = `
     <div class="kpis"><div class="kpis-main">
-      <div class="kpi" role="button" tabindex="0" data-act="open-income" style="cursor:pointer" title="Edit income in Settings"><div class="k">Net income </div><div class="v">${usd(m.income)}</div></div>
+      <div class="kpi" role="button" tabindex="0" data-act="open-income" style="cursor:pointer" title="Change your income"><div class="k">Net income </div><div class="v">${usd(m.income)}</div></div>
       ${kpi('allocated', 'Allocated')}
       ${kpi('allocatedPct', 'Percent allocated')}
       </div>
@@ -87,7 +86,7 @@ export function renderMonth() {
     </div>
     <div class="month-grid">
       <div class="cols">${secs.map(cardHtml).join('')}
-        <button class="add-list" data-act="sec-add">+ Add new category</button></div>
+        <button class="add-list" data-act="sec-add">${icon("plus")}Add new category</button></div>
       <aside class="side">
         <section class="card chart-card">
           <h3>Spending breakdown</h3>

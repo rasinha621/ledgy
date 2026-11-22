@@ -1,6 +1,7 @@
 // The Summary tab: year totals, the year breakdown pie (Total Savings drills into its rows) and spending by month.
 import { calcDrawdown, calcSummary } from '/lib/calc.js';
 import { $, esc, onActivate } from './dom.js';
+import { icon } from './icons.js';
 import { fmt, usd, pct } from './format.js';
 import { cssVar } from './colors.js';
 import { state } from './state.js';
@@ -13,10 +14,10 @@ let paintPie = null; // redraws the pie of the current Summary
 function totalCell([, v, limit, goal]) {
   if (!(limit > 0)) return `<td>${usd(v)}</td>`;
   const met = v >= limit - 0.005;
-  if (goal) return met ? `<td class="met" title="Goal met">${usd(v)}</td>` : `<td title="Goal ${esc(usd(limit))}">${usd(v)}</td>`;
-  if (v > limit + 0.005) return `<td class="over" title="Over the ${esc(usd(limit))} limit">${usd(v)}</td>`;
-  if (met) return `<td class="met" title="Annual limit met">${usd(v)}</td>`;
-  return `<td title="Limit ${esc(usd(limit))}">${usd(v)}</td>`;
+  if (goal) return met ? `<td class="met" title="Goal met">${usd(v)}</td>` : `<td title="Goal: ${esc(usd(limit))}">${usd(v)}</td>`;
+  if (v > limit + 0.005) return `<td class="over" title="More than the limit of ${esc(usd(limit))}">${usd(v)}</td>`;
+  if (met) return `<td class="met" title="Yearly limit reached">${usd(v)}</td>`;
+  return `<td title="Limit: ${esc(usd(limit))}">${usd(v)}</td>`;
 }
 
 function summaryHtml(s) {
@@ -74,7 +75,7 @@ function buildPie(s) {
     const total = drill ? s.totalSavings : ps.reduce((t, p) => t + Math.max(0, p.value), 0);
     charts.pie.options.plugins.tooltip = tooltip((ctx) => ` ${ctx.label}: ${usd(ctx.raw)} (${total ? pct(ctx.raw / total) : '—'})`);
     paintRing(charts.pie, ps);
-    $('#pieTitle').innerHTML = drill ? 'Savings breakdown <button type="button" class="btn ghost" data-drill="pie">← Year breakdown</button>' : 'Year breakdown';
+    $('#pieTitle').innerHTML = drill ? 'Savings breakdown <button type="button" class="btn ghost" data-drill="pie">' + icon('arrow-left') + 'Year breakdown</button>' : 'Year breakdown';
     const drillable = canDrill();
     $('#pieLegend').innerHTML = ps.map((p) => legendRow(p, total ? (drill ? p.value : Math.max(0, p.value)) / total : null, drillable && p.label === 'Total Savings' ? drillAttrs('pie') : '')).join('')
       + (drill ? legendTotal(s.totalSavings) : '');

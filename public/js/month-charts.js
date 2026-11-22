@@ -1,6 +1,7 @@
 // The month view's charts: spending breakdown (doughnut, Savings drills into its rows) and Needs by line.
 import { needsRowValue } from '/lib/calc.js';
 import { $ } from './dom.js';
+import { icon } from './icons.js';
 import { usd } from './format.js';
 import { cssVar } from './colors.js';
 import { state } from './state.js';
@@ -59,7 +60,7 @@ function updateDonut(m, c) {
   paintRing(charts.donut, parts, shown);
 
   const sub = $('#donutSub');
-  if (drill) sub.innerHTML = '<button type="button" class="btn ghost" data-drill="donut">← All categories</button>';
+  if (drill) sub.innerHTML = `<button type="button" class="btn ghost" data-drill="donut">${icon('arrow-left')}All categories</button>`;
   else {
     sub.textContent = c.hasIncome
       ? (c.remaining < -0.005 ? `Over income by ${usd(-c.remaining)}.` : `Share of ${taxesOff ? 'income after taxes' : 'gross income'} ${usd(gross)}.`)

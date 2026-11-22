@@ -11,7 +11,7 @@ import { setLink, showPop, hidePop, popKeydown } from './picker.js';
 import { setTab } from './render.js';
 import { openListDialog, deleteList } from './dialogs.js';
 import { openImport, openNew } from './year-dialogs.js';
-import { openSettings } from './settings.js';
+import { openIncome } from './income-panel.js';
 
 const isAmt = (t) => t.classList.contains('amt');
 const isLbl = (t) => t.classList.contains('lbl');
@@ -139,5 +139,5 @@ export function initMonthEvents() {
   onActivate(view, '[data-toggle-card]', (el) => toggleCard(el.dataset.toggleCard), 'button');
   onActivate(view, '[data-drill="donut"]', toggleDonut);
   onActivate(view, '[data-toggle="taxes"]', () => { state.hideTaxes = !state.hideTaxes; refresh(); });
-  onActivate(view, '[data-act="open-income"]', () => openSettings('income', state.tab));
+  onActivate(view, '[data-act="open-income"]', () => openIncome(state.tab));
 }
