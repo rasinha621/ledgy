@@ -1,6 +1,7 @@
 // Settings: savings goals (each adds a savings row to every month) and the optional Summary columns.
 // Edits are kept in a draft and applied when the settings are saved.
 import { $, esc } from './dom.js';
+import { icon } from './icons.js';
 import { inputNum, toMoney } from './format.js';
 import { SAV_COLS, goalCol } from './prefs.js';
 
@@ -10,8 +11,8 @@ function renderGoals() {
   $('#goalsBox').innerHTML = goals.map((g, i) => `<div class="grid3" style="grid-template-columns:1fr 1fr auto;align-items:center;margin-top:12px">
     <label class="tf"><input type="text" maxlength="60" autocomplete="off" data-goal="${i}" data-k="name" value="${esc(g.name)}" placeholder=" "><span>Savings goal</span></label>
     <label class="tf"><input type="number" step="any" min="0" data-goal="${i}" data-k="target" value="${esc(g.target ?? '')}" placeholder=" "><span>Target $</span></label>
-    <button type="button" class="btn ghost" data-rm-goal="${i}" aria-label="Remove savings goal">Remove</button>
-  </div>`).join('') + '<div style="margin-top:12px"><button type="button" class="btn" id="addGoalBtn">+ Add savings goal</button></div>';
+    <button type="button" class="btn ghost" data-rm-goal="${i}" aria-label="Remove savings goal" title="Remove">${icon("trash")}</button>
+  </div>`).join('') + `<div style="margin-top:12px"><button type="button" class="btn" id="addGoalBtn">${icon('plus')}Add savings goal</button></div>`;
 }
 
 function renderCols() {

@@ -20,7 +20,6 @@ export function render() {
   const { doc } = state;
   $('#settingsBtn').hidden = !doc;
   $('#incomeBtn').hidden = !doc;
-  $('#providersBtn').hidden = !doc;
   if (!doc) { $('#tabs').innerHTML = ''; $('#view').innerHTML = emptyState(); return; }
   $('#exportBtn').href = `/api/years/${doc.year}/export.xlsx`;
   renderTabs();

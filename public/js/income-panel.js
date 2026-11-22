@@ -2,6 +2,7 @@
 // Edits are kept in a draft and applied to the year when the dialog is saved.
 import { hasPayEntries, round2 } from '/lib/calc.js';
 import { $, $$, esc, storedSet, onActivate, cancelled } from './dom.js';
+import { icon } from './icons.js';
 import { inputNum, toMoney } from './format.js';
 import { monthLabel } from './prefs.js';
 import { state } from './state.js';
@@ -32,14 +33,14 @@ function monthHtml(m, i) {
   const extras = m.extras.map((x, j) => `<div class="grid3" style="grid-template-columns:1fr 1fr auto;align-items:center">
       ${field(`data-m="${i}" data-x="${j}" data-k="label"`, x.label, 'Extra income', 'text')}
       ${field(`data-m="${i}" data-x="${j}" data-k="amount"`, x.amount, 'Amount')}
-      <button type="button" class="btn ghost" data-rm-m="${i}" data-rm-x="${j}" aria-label="Remove extra income">Remove</button>
+      <button type="button" class="btn ghost" data-rm-m="${i}" data-rm-x="${j}" aria-label="Remove extra income" title="Remove">${icon("trash")}</button>
     </div>`).join('');
   return `<fieldset${shut ? ' style="padding:0"' : ''}>
     ${head}
-    <div style="display:grid;gap:inherit" ${shut ? 'hidden' : ''}>
+    <div style="display:grid;gap:1rem" ${shut ? 'hidden' : ''}>
     ${pays}
     ${extras}
-    <div><button type="button" class="btn" data-add-extra="${i}">+ Add extra income</button></div>
+    <div><button type="button" class="btn" data-add-extra="${i}">${icon("plus")}Add extra income</button></div>
     </div>
   </fieldset>`;
 }

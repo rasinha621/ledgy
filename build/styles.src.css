@@ -88,6 +88,7 @@
   .top { @apply sticky top-0 z-[5] flex min-h-16 flex-wrap items-center justify-between gap-3 border-b border-line bg-card py-2 pr-4 pl-5 max-sm:static max-sm:pr-2 max-sm:pl-4; }
   .brand { @apply flex items-center gap-3 text-xl font-semibold tracking-tight; }
   .logo { @apply size-7 rounded-lg; }
+  .ico { @apply size-5 shrink-0; }
   .brand select { @apply h-8 cursor-pointer appearance-none rounded-md border border-line-strong bg-transparent pr-7 pl-3 text-sm font-medium text-ink-2 transition-colors hover:bg-ink/5;
     background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
     background-position: calc(100% - 15px) 14px, calc(100% - 10px) 14px; background-size: 5px 5px; background-repeat: no-repeat; }
@@ -154,10 +155,10 @@
   .row .pos { @apply text-[11px] text-faint; }
   .row .lbl::placeholder { opacity: 0; }
   .row:hover .lbl::placeholder, .row .lbl:focus::placeholder, .row.blank .lbl::placeholder { opacity: 1; }
-  .icon-btn { @apply size-10 cursor-pointer rounded-full border-0 bg-transparent text-[13px] text-ink-2 opacity-0 hover:bg-over/10 hover:text-over max-sm:opacity-100; }
+  .icon-btn { @apply grid size-10 place-items-center p-0 cursor-pointer rounded-full border-0 bg-transparent text-[13px] text-ink-2 opacity-0 hover:bg-over/10 hover:text-over max-sm:opacity-100; }
   .row:hover .icon-btn, .row:focus-within .icon-btn { opacity: 1; }
-  .add { @apply mx-2 mt-2 mb-4 block h-10 w-[calc(100%-16px)] cursor-pointer rounded-lg border-0 bg-transparent px-3 text-sm font-medium text-accent transition-colors hover:bg-accent/10 active:bg-accent/15; }
-  .add-list { @apply h-10 cursor-pointer rounded-xl border border-dashed border-line-strong bg-transparent text-sm font-medium text-accent transition-colors hover:bg-accent/10 active:bg-accent/15; }
+  .add { @apply mx-2 mt-2 mb-4 flex items-center justify-center gap-2 h-10 w-[calc(100%-16px)] cursor-pointer rounded-lg border-0 bg-transparent px-3 text-sm font-medium text-accent transition-colors hover:bg-accent/10 active:bg-accent/15; }
+  .add-list { @apply inline-flex h-10 items-center justify-center gap-2 cursor-pointer rounded-xl border border-dashed border-line-strong bg-transparent text-sm font-medium text-accent transition-colors hover:bg-accent/10 active:bg-accent/15; }
   .card-h[data-toggle-card] { @apply cursor-pointer select-none; }
   .card.collapsed .card-h { @apply pb-3; }
   .quick { @apply m-0 grid grid-cols-[96px_minmax(0,1fr)_40px] items-center gap-1 border-t border-line px-2 py-2; }
@@ -166,6 +167,7 @@
   .quick .qa-add { @apply grid size-10 cursor-pointer place-items-center p-0 leading-none rounded-full border-0 bg-accent/10 text-lg text-accent hover:bg-accent/20; }
   .empty-row { @apply px-2 py-3 text-xs text-ink-2; }
   .card-t .sec-btn { @apply size-8 text-sm opacity-60 hover:opacity-100; }
+  .sec-btn .ico, .chart-card .sub .btn .ico { @apply size-4; }
 
   /* Charts */
   .chart-card { @apply p-4; }
@@ -208,7 +210,7 @@
   dialog::backdrop { @apply bg-slate-950/40; }
   dialog form { @apply grid gap-4 p-6; }
   dialog form:has(> .dlg-close) { @apply relative; }
-  .dlg-close { @apply absolute right-3 top-3 inline-flex size-9 cursor-pointer items-center justify-center rounded-lg border-0 bg-transparent p-0 text-xl leading-none text-ink-2 hover:bg-soft/60 hover:text-ink; }
+  .dlg-close { @apply absolute right-3 top-3 inline-flex size-9 cursor-pointer items-center justify-center rounded-lg border-0 bg-transparent p-0 leading-none text-ink-2 hover:bg-soft/60 hover:text-ink; }
   dialog h2 { @apply m-0 text-xl font-semibold; }
   dialog p { @apply m-0 text-sm text-ink-2; }
   dialog label.check { @apply flex min-h-10 items-center gap-3 text-sm text-ink; }
@@ -306,14 +308,13 @@
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
 
-/* No spinner arrows on the income and contribution-limit fields */
-#setPanelIncome input[type=number], input[name=limit401k], input[name=limitHsa], input[name=limitRoth] { -moz-appearance: textfield; appearance: textfield; }
-#setPanelIncome input[type=number]::-webkit-inner-spin-button, input[name=limit401k]::-webkit-inner-spin-button, input[name=limitHsa]::-webkit-inner-spin-button, input[name=limitRoth]::-webkit-inner-spin-button,
-#setPanelIncome input[type=number]::-webkit-outer-spin-button, input[name=limit401k]::-webkit-outer-spin-button, input[name=limitHsa]::-webkit-outer-spin-button, input[name=limitRoth]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+/* No spinner arrows on any number field */
+input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+input[type=number]::-webkit-outer-spin-button, input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 
 /* Scroll inside the rounded dialog so the scrollbar is clipped by its corners */
-#settingsDlg, #incomeDlg, #providersDlg { overflow: hidden; }
-#settingsDlg form, #incomeDlg form, #providersDlg form { max-height: calc(100dvh - 32px); overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--line, #cbd5e1) transparent; }
+#settingsDlg, #incomeDlg { overflow: hidden; }
+#settingsDlg form, #incomeDlg form form { max-height: calc(100dvh - 32px); overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--line, #cbd5e1) transparent; }
 
 /* Spending rows: the amount box uses the same floating "Amount" label as the income fields */
 .row .tf input { height: 2.5rem; font-size: inherit; }
@@ -328,8 +329,3 @@
 
 /* Summary totals: center every column so the gaps between values are even */
 .sum-table th, .sum-table td { text-align: center; }
-
-/* Hide number-input spinners */
-input.no-spin::-webkit-outer-spin-button,
-input.no-spin::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-input.no-spin { -moz-appearance: textfield; appearance: textfield; }

@@ -18,14 +18,13 @@
       <img class="logo" src="/icon.svg" alt="" aria-hidden="true">
       <span>Ledgy</span>
       <select id="yearSelect" aria-label="Year"></select>
-      <button id="newYearBtn" class="btn ghost">New year</button>
+      <button id="newYearBtn" class="btn ghost" data-icon="calendar-days">New year</button>
     </div>
     <div class="actions">
       <span id="saveState" class="save-state" aria-live="polite"></span>
-      <button id="incomeBtn" class="btn ghost" aria-label="Income" hidden>Income</button>
-      <button id="providersBtn" class="btn ghost" aria-label="Providers" hidden>Providers</button>
-      <button id="settingsBtn"class="btn ghost" aria-label="Settings">Settings</button>
-      <button type="button" id="signOutBtn" class="btn ghost" hidden>Sign out</button>
+      <button id="incomeBtn" class="btn ghost" aria-label="Income" hidden data-icon="banknotes">Income</button>
+      <button id="settingsBtn" class="btn ghost" aria-label="Settings" data-icon="cog-6-tooth">Settings</button>
+      <button type="button" id="signOutBtn" class="btn ghost" hidden data-icon="arrow-right-on-rectangle">Sign out</button>
     </div>
   </header>
 
@@ -91,7 +90,7 @@
 
   <dialog id="incomeDlg">
     <form method="dialog" id="incomeForm">
-      <button type="button" class="dlg-close" id="incomeClose" aria-label="Close income">&times;</button>
+      <button type="button" class="dlg-close" id="incomeClose" aria-label="Close income" data-icon="x-mark"></button>
       <h2>Income for <span id="incomeYearLbl"></span></h2>
       <div id="incomePanel" class="set-panel"></div>
       <div class="dlg-actions">
@@ -101,26 +100,9 @@
     </form>
   </dialog>
 
-  <dialog id="providersDlg">
-    <form method="dialog" id="providersForm">
-      <button type="button" class="dlg-close" id="providersClose" aria-label="Close providers">&times;</button>
-      <h2>Providers</h2>
-      <div class="set-tabs" role="tablist">
-        <button type="button" class="set-tab" role="tab" id="provTabSubs" aria-controls="provPanelSubs" aria-selected="true" data-tab="subs">Subscriptions</button>
-        <button type="button" class="set-tab" role="tab" id="provTabUtils" aria-controls="provPanelUtils" aria-selected="false" tabindex="-1" data-tab="utils">Utilities</button>
-      </div>
-      <div id="provPanelSubs" class="set-panel" role="tabpanel" aria-labelledby="provTabSubs"></div>
-      <div id="provPanelUtils" class="set-panel" role="tabpanel" aria-labelledby="provTabUtils" hidden></div>
-      <div class="dlg-actions">
-        <span class="spacer"></span>
-        <button class="btn primary" value="default">Done</button>
-      </div>
-    </form>
-  </dialog>
-
   <dialog id="settingsDlg">
     <form method="dialog" id="settingsForm">
-      <button type="button" class="dlg-close" id="settingsClose" aria-label="Close settings">&times;</button>
+      <button type="button" class="dlg-close" id="settingsClose" aria-label="Close settings" data-icon="x-mark"></button>
       <h2>Settings for <span id="setYearLbl"></span></h2>
       <div class="set-tabs" role="tablist">
         <button type="button" class="set-tab" role="tab" id="setTabData" aria-controls="setPanelData" aria-selected="true" data-tab="data">General</button>
@@ -155,9 +137,9 @@
       <fieldset>
         <legend>Data</legend>
         <div class="data-actions">
-          <button type="button" id="importBtn" class="btn" title="Import an Excel file or a JSON backup">Import</button>
-          <a id="exportBtn" class="btn" href="#" download title="Download an Excel file (.xlsx) with formulas">Export</a>
-          <a id="backupLink" class="btn" href="#" download title="Download this year as a JSON file">JSON backup</a>
+          <button type="button" id="importBtn" class="btn" data-icon="arrow-up-tray" title="Import an Excel file or a JSON backup">Import</button>
+          <a id="exportBtn" class="btn" data-icon="arrow-down-tray" href="#" download title="Download an Excel file (.xlsx) with formulas">Export</a>
+          <a id="backupLink" class="btn" data-icon="document-arrow-down" href="#" download title="Download this year as a JSON file">JSON backup</a>
         </div>
       </fieldset>
       </div>
