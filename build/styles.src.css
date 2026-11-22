@@ -134,7 +134,7 @@
   .card-h { @apply p-4; }
   .card-t { @apply flex items-center gap-3 text-base font-semibold; }
   .swatch { @apply size-3 flex-none rounded-full; }
-  .card-t .total { @apply ml-auto tabular-nums; }
+  .card-t .total { @apply ml-auto whitespace-nowrap tabular-nums; }
   .card-sub { @apply mt-2 flex justify-between gap-2 text-xs text-ink-2 tabular-nums; }
   .card-sub .over { @apply font-medium text-over; }
   .card-sub .met { @apply font-medium text-ok; }
@@ -167,6 +167,7 @@
   .quick .qa-add { @apply grid size-10 cursor-pointer place-items-center p-0 leading-none rounded-full border-0 bg-accent/10 text-lg text-accent hover:bg-accent/20; }
   .empty-row { @apply px-2 py-3 text-xs text-ink-2; }
   .card-t .sec-btn { @apply size-8 text-sm opacity-60 hover:opacity-100; }
+  .card-t .sec-btn + .sec-btn { @apply -ml-2.5; }
   .sec-btn .ico, .chart-card .sub .btn .ico { @apply size-4; }
 
   /* Charts */
@@ -314,7 +315,7 @@ input[type=number]::-webkit-outer-spin-button, input[type=number]::-webkit-inner
 
 /* Scroll inside the rounded dialog so the scrollbar is clipped by its corners */
 #settingsDlg, #incomeDlg { overflow: hidden; }
-#settingsDlg form, #incomeDlg form form { max-height: calc(100dvh - 32px); overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--line, #cbd5e1) transparent; }
+#settingsDlg form, #incomeDlg form { max-height: calc(100dvh - 32px); overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--line, #cbd5e1) transparent; }
 
 /* Spending rows: the amount box uses the same floating "Amount" label as the income fields */
 .row .tf input { height: 2.5rem; font-size: inherit; }
