@@ -11,6 +11,7 @@ import { initDialogs } from './js/dialogs.js';
 import { initYearDialogs } from './js/year-dialogs.js';
 import { initSettings } from './js/settings.js';
 import { initIncome } from './js/income-panel.js';
+import { initCustom } from './js/custom.js';
 import { initTooltips } from './js/tooltips.js';
 import { hydrateIcons } from './js/icons.js';
 
@@ -24,6 +25,7 @@ initDialogs();
 initYearDialogs();
 initSettings();
 initIncome();
+initCustom();
 initTooltips();
 hydrateIcons();
 

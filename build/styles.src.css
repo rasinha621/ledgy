@@ -129,6 +129,13 @@
   /* Layout */
   .month-grid { @apply grid grid-cols-[minmax(0,1fr)_360px] items-start gap-4 max-[1100px]:grid-cols-1; }
   .cols { @apply grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] items-start gap-4; }
+  .cols.by-cat { @apply grid-cols-[repeat(auto-fit,minmax(260px,1fr))]; }
+  .col { @apply grid min-w-0 content-start gap-4; }
+  .side .add-list { @apply col-span-full; }
+  .swatch.drag { @apply cursor-grab active:cursor-grabbing focus-visible:outline-2 focus-visible:outline-accent; }
+  .card.dragging { @apply opacity-50; }
+  .card.drop-before { @apply shadow-[0_-4px_0_0_var(--color-accent)]; }
+  .card.drop-after { @apply shadow-[0_4px_0_0_var(--color-accent)]; }
   .side { @apply sticky top-[136px] grid gap-4 max-[1100px]:static max-[1100px]:grid-cols-[repeat(auto-fit,minmax(280px,1fr))]; }
   .card { @apply min-w-0 overflow-hidden rounded-xl border border-line bg-card shadow-sm; }
   .card-h { @apply p-4; }
@@ -158,7 +165,7 @@
   .icon-btn { @apply grid size-10 place-items-center p-0 cursor-pointer rounded-full border-0 bg-transparent text-[13px] text-ink-2 opacity-0 hover:bg-over/10 hover:text-over max-sm:opacity-100; }
   .row:hover .icon-btn, .row:focus-within .icon-btn { opacity: 1; }
   .add { @apply mx-2 mt-2 mb-4 flex items-center justify-center gap-2 h-10 w-[calc(100%-16px)] cursor-pointer rounded-lg border-0 bg-transparent px-3 text-sm font-medium text-accent transition-colors hover:bg-accent/10 active:bg-accent/15; }
-  .add-list { @apply inline-flex h-10 items-center justify-center gap-2 cursor-pointer rounded-xl border border-dashed border-line-strong bg-transparent text-sm font-medium text-accent transition-colors hover:bg-accent/10 active:bg-accent/15; }
+  .add-list { @apply inline-flex h-10 items-center justify-center gap-2 cursor-pointer rounded-xl border border-line-strong bg-transparent text-sm font-medium text-accent transition-colors hover:bg-accent/10 active:bg-accent/15; }
   .card-h[data-toggle-card] { @apply cursor-pointer select-none; }
   .card.collapsed .card-h { @apply pb-3; }
   .quick { @apply m-0 grid grid-cols-[96px_minmax(0,1fr)_40px] items-center gap-1 border-t border-line px-2 py-2; }
@@ -216,10 +223,6 @@
   dialog p { @apply m-0 text-sm text-ink-2; }
   dialog label.check { @apply flex min-h-10 items-center gap-3 text-sm text-ink; }
   dialog input[type=radio], dialog input[type=checkbox] { @apply m-0 size-4.5 accent-accent; }
-  .set-tabs { @apply flex border-b border-line; }
-  .set-tab { @apply relative h-11 flex-1 cursor-pointer border-0 bg-transparent px-4 text-sm font-medium text-ink-2 transition-colors hover:bg-ink/5 hover:text-ink; }
-  .set-tab[aria-selected="true"] { @apply text-accent; }
-  .set-tab[aria-selected="true"]::after { content: ""; @apply absolute inset-x-4 bottom-0 h-0.5 rounded-t-sm bg-accent; }
   .set-panel { @apply grid gap-4; }
   .set-panel[hidden] { @apply hidden; }
   dialog.alert { @apply w-[min(340px,calc(100vw-32px))]; }
@@ -314,8 +317,8 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 input[type=number]::-webkit-outer-spin-button, input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 
 /* Scroll inside the rounded dialog so the scrollbar is clipped by its corners */
-#settingsDlg, #incomeDlg, #helpDlg { overflow: hidden; }
-#settingsDlg form, #incomeDlg form, #helpDlg form { max-height: calc(100dvh - 32px); overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--line, #cbd5e1) transparent; }
+#settingsDlg, #customDlg, #incomeDlg, #helpDlg { overflow: hidden; }
+#settingsDlg form, #customDlg form, #incomeDlg form, #helpDlg form { max-height: calc(100dvh - 32px); overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--line, #cbd5e1) transparent; }
 
 /* Spending rows: the amount box uses the same floating "Amount" label as the income fields */
 .row .tf input { height: 2.5rem; font-size: inherit; }
@@ -324,9 +327,9 @@ input[type=number]::-webkit-outer-spin-button, input[type=number]::-webkit-inner
 .row .tf input:not(:placeholder-shown) + span { opacity: 0; }
 @media (max-width: 640px) { .row .tf input { height: 2rem; } .row .tf span { top: .25rem; } }
 :root[data-density="compact"] .row .tf span, :root[data-density="compact"] .row .tf input:focus + span { top: .25rem; }
-/* Button labels preference: "icons" visually hides the text (still read by screen readers), "text" hides the icons */
-:root[data-labels="icons"] .lbl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-:root[data-labels="icons"] .btn:has(> .lbl):not(.primary) { padding-inline: .75rem; }
+/* Button labels preference: "icons" visually hides the text of the header navigation only (still read by screen readers); "text" hides the icons */
+:root[data-labels="icons"] header.top .lbl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+:root[data-labels="icons"] header.top .btn:has(> .lbl):not(.primary) { padding-inline: .75rem; }
 :root[data-labels="text"] :has(> .lbl) > .ico { display: none; }
 /* Spending entry outlines: boxed by default, "plain" only shows a box on focus */
 :root:not([data-entries="plain"]) .row input.lbl:not(:focus) { border-color: var(--line-strong); }

@@ -10,23 +10,18 @@ You can audit the numbers. **Export** makes an Excel file that has the formulas.
 
 Ledgy follows these principles. They explain why the app works as it does.
 
-1. **You own your data.** Ledgy runs on your computer or your server. It does not send data to other sites. It has no accounts, no tracking, and no cloud service.
-2. **The numbers must be checkable.** Ledgy copies the formulas of an original spreadsheet. A test compares each result with that spreadsheet. **Export** gives you the formulas, so you can do the check yourself.
-3. **Keep it simple.** Ledgy does one job: a monthly budget. It does not link to banks. You type the numbers. This keeps the app small and private.
-4. **Be fast to use.** Enter moves to the next row. You can paste a column from a spreadsheet. Changes save automatically.
-5. **Do not lose data.** Each change is saved a short time after you stop typing. The app refuses to overwrite newer data. You can download a backup at any time.
-6. **Be safe by default.** The app does not start without a login. You must choose to run it without a login.
-7. **Make it easy to read.** The app has a light theme and a dark theme. You can choose one color, and the app builds the other colors from it. You can choose how dense the page is and how the buttons look.
-8. **Use plain words.** The text in the app and in this file is short and direct. This file uses ASD-STE100 (Simplified Technical English).
+1. **You own your data.** Ledgy runs on your computer or your server. It does not send data to other sites. It has no centralized accounts, no tracking, and no cloud service.
+2. **The numbers must be verifiable.** Ledgy copies the formulas of an original spreadsheet. A test compares each result with that spreadsheet. **Export** gives you the formulas, so you can do the check yourself.
+3. **Keep it simple and fast.** Ledgy does one job: a monthly budget. It does not link to banks. You type the numbers. This keeps the app small and private, and ensures you are always mindfully thinking about expenses when enetering them.
 
 ## Design decisions
 
 ### The spreadsheet is the source of truth
 
-Ledgy started as a replacement for a budget spreadsheet. The calculation engine in `lib/calc.js` has the same formulas as that spreadsheet. The server and the browser use the same file. This gives two benefits:
+Ledgy started as a replacement for my budget spreadsheet. The calculation engine in `lib/calc.js` has the same formulas as that spreadsheet. The server and the browser use the same file. This gives two benefits:
 
 - The export always agrees with the screen.
-- The test in `test/verify.mjs` can compare Ledgy with the spreadsheet.
+- The test in `test/verify.mjs` can compare Ledgy with the spreadsheet. Changes are never merged unless this test passes.
 
 When the income is blank, a percent shows "—". The spreadsheet shows `#DIV/0!`. Ledgy rounds numbers for display in the same way as Excel (`#,##0.00`). Ledgy keeps money to two decimal places in all calculations.
 
@@ -62,7 +57,7 @@ The IRS changes the yearly limits for 401k, HSA, and Roth accounts. Ledgy does n
 
 ### Per-browser preferences
 
-Theme, density, month style, entry style, button labels, and Summary columns are saved in the browser. They are not saved with the budget data. A budget has the same numbers on all devices. Each device can look different.
+Theme, density, month style, list layout, entry style, button labels, and Summary columns are saved in the browser. They are not saved with the budget data. A budget has the same numbers on all devices. Each device can look different.
 
 ### Seed color theme
 
@@ -71,13 +66,14 @@ One seed color makes the whole theme. The app takes the hue and the chroma of th
 ### Interface
 
 - **Compact and normal density.** Compact shows more rows on one screen.
+- **List layout.** By category (the default) puts Groceries, Transit, and your own lists in a column under their Wants, Needs, or Savings card. None shows all cards in one flat grid. Drag the handle on a list, or press the up and down arrow keys on it, to change the order.
 - **Button labels.** You can show icons and text, only icons, or only text. Screen readers always read the text.
 - **Help window.** The app explains its categories, the 50/30/20 rule, and the contribution limits.
 - **Negative amounts.** A refund shows in green and reduces the total.
 
 ### Security
 
-- **Login required.** The app does not start without `BASIC_AUTH_USER` and `BASIC_AUTH_PASS`. To run without a login, you must set `ALLOW_NO_AUTH=1`.
+- **Login required.** The app does not start without `BASIC_AUTH_USER` and `BASIC_AUTH_PASS`. To run without a login, you can set `ALLOW_NO_AUTH=1` in the `.env` file at setup. This is a **local** login, ust like your device PIN or password, there is no helpdesk to reset your password.
 - **Signed session cookie.** The key comes from the login. When you change the password, all sessions end.
 - **Lockout.** After 10 wrong passwords, the app blocks the address for 15 minutes.
 - **No cross-site changes.** Each change must have the `X-Ledgy` header and come from the same site.

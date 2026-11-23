@@ -4,12 +4,18 @@ let tipTimer = null; let tipFor = null;
 
 function hideTip() { clearTimeout(tipTimer); tipEl.classList.remove('on'); tipFor = null; }
 
+// Take over from the browser tooltip and keep the text for assistive tech.
+function adopt(el) {
+  const text = el.getAttribute('title');
+  if (text === null) return;
+  el.removeAttribute('title');
+  if (!text) return;
+  el.dataset.tip = text;
+  if (!el.getAttribute('aria-label') && !el.textContent.trim()) el.setAttribute('aria-label', text); else el.setAttribute('aria-description', text);
+}
+
 function showTip(el) {
-  const text = el.getAttribute('title') || el.dataset.tip;
-  if (el.hasAttribute('title')) { // Take over from the browser tooltip and keep the text for assistive tech
-    el.dataset.tip = text; el.removeAttribute('title');
-    if (!el.getAttribute('aria-label') && !el.textContent.trim()) el.setAttribute('aria-label', text); else el.setAttribute('aria-description', text);
-  }
+  adopt(el);
   if (!el.dataset.tip) return;
   tipEl.textContent = el.dataset.tip; tipFor = el;
   const r = el.getBoundingClientRect(); const t = tipEl.getBoundingClientRect();
@@ -24,7 +30,10 @@ const tipTarget = (e) => e.target.closest?.('[title]:not([title=""]), [data-tip]
 export function initTooltips() {
   document.body.append(tipEl);
   document.addEventListener('pointerover', (e) => {
-    const el = tipTarget(e); if (!el || el === tipFor) return;
+    const el = tipTarget(e); if (!el) return;
+    // A title on a parent (like a card header's "Expand") would show natively once this element's title is taken over.
+    for (let a = el.parentElement?.closest('[title]'); a; a = a.parentElement?.closest('[title]')) adopt(a);
+    if (el === tipFor) return;
     hideTip();
     tipTimer = setTimeout(() => showTip(el), 500);
   });
