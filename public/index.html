@@ -22,8 +22,10 @@
     </div>
     <div class="actions">
       <span id="saveState" class="save-state" aria-live="polite"></span>
+      <span id="savedAt" class="save-state"></span>
       <button id="incomeBtn" class="btn ghost" aria-label="Income" hidden data-icon="banknotes">Income</button>
       <button type="button" id="helpBtn" class="btn ghost" aria-label="Help" data-icon="question-mark-circle">Help</button>
+      <button id="customBtn" class="btn ghost" aria-label="Customize" hidden data-icon="paint-brush">Customize</button>
       <button id="settingsBtn" class="btn ghost" aria-label="Settings" data-icon="cog-6-tooth">Settings</button>
       <button type="button" id="signOutBtn" class="btn ghost" hidden data-icon="arrow-right-on-rectangle">Sign out</button>
     </div>
@@ -113,7 +115,7 @@
           <dt>Needs</dt><dd>Costs that you must pay. Examples are rent, utilities, insurance and food.</dd>
           <dt>Savings</dt><dd>Money that you keep for the future. The default rows are 401k, HSA, Roth, Cash and Investing.</dd>
           <dt>Groceries and Transit</dt><dd>These are lists. A list adds up the items that you type in it. A row in Needs can show the total of a list.</dd>
-          <dt>Your own lists</dt><dd>Select <strong>Add new category</strong> to make a list. Put the list in Wants, Needs or Savings.</dd>
+          <dt>Your own lists</dt><dd>Select <strong>Add new list</strong> to make a list. Put the list in Wants, Needs or Savings.</dd>
         </dl>
         <p>The top of the month page shows these values:</p>
         <dl>
@@ -160,11 +162,7 @@
     <form method="dialog" id="settingsForm">
       <button type="button" class="dlg-close" id="settingsClose" aria-label="Close settings" data-icon="x-mark"></button>
       <h2>Settings for <span id="setYearLbl"></span></h2>
-      <div class="set-tabs" role="tablist">
-        <button type="button" class="set-tab" role="tab" id="setTabData" aria-controls="setPanelData" aria-selected="true" data-tab="data">General</button>
-        <button type="button" class="set-tab" role="tab" id="setTabCustom" aria-controls="setPanelCustom" aria-selected="false" tabindex="-1" data-tab="custom">Customization</button>
-      </div>
-      <div id="setPanelData" class="set-panel" role="tabpanel" aria-labelledby="setTabData">
+      <div class="set-panel">
       <fieldset>
         <legend>Budget breakdown</legend>
         <div class="grid3">
@@ -199,13 +197,26 @@
         </div>
       </fieldset>
       </div>
-      <div id="setPanelCustom" class="set-panel" role="tabpanel" aria-labelledby="setTabCustom" hidden>
+      <div class="dlg-actions">
+        <button type="button" id="deleteYearBtn" class="btn danger">Delete year</button>
+        <span class="spacer"></span>
+        <button class="btn primary" value="default">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="customDlg">
+    <form method="dialog" id="customForm">
+      <button type="button" class="dlg-close" id="customClose" aria-label="Close customization" data-icon="x-mark"></button>
+      <h2>Customization</h2>
+      <div class="set-panel">
       <fieldset>
         <legend>Preferences (this browser)</legend>
         <div class="grid3">
           <label class="tf sel"><select name="theme"><option value="auto">Auto</option><option value="light">Light</option><option value="dark">Dark</option></select><span>Theme</span></label>
           <label class="tf sel"><select name="monthStyle"><option value="upper">JAN</option><option value="title">Jan</option><option value="num">MM/YY</option><option value="full">January</option></select><span>Month style</span></label>
           <label class="tf sel"><select name="density"><option value="normal">Normal</option><option value="compact">Compact</option></select><span>Density</span></label>
+          <label class="tf sel"><select name="listLayout"><option value="category">By category</option><option value="none">None</option></select><span>List layout</span></label>
           <label class="tf sel"><select name="entryStyle"><option value="boxed">Boxed</option><option value="plain">No boxes</option></select><span>Spending entries</span></label>
           <label class="tf sel"><select name="labels"><option value="both">Icons and text</option><option value="icons">Icons only</option><option value="text">Text only</option></select><span>Button labels</span></label>
         </div>
@@ -226,7 +237,6 @@
       </fieldset>
       </div>
       <div class="dlg-actions">
-        <button type="button" id="deleteYearBtn" class="btn danger">Delete year</button>
         <span class="spacer"></span>
         <button class="btn primary" value="default">Save</button>
       </div>

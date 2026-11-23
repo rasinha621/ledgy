@@ -1,4 +1,4 @@
-// Per-browser preferences: theme, density, month names, entry style, button labels, Summary columns and the seed color.
+// Per-browser preferences: theme, density, month names, list layout, entry style, button labels, Summary columns and the seed color.
 import { syncIcon } from '/icon.js';
 import { isHex, applySeed } from '/seed.js';
 import { MONTHS } from '/lib/calc.js';
@@ -27,6 +27,7 @@ function loadPrefs() {
     density: p.density === 'compact' ? 'compact' : 'normal',
     monthStyle: MONTH_STYLES[p.monthStyle] ? p.monthStyle : 'upper',
     labels: ['icons', 'text'].includes(p.labels) ? p.labels : 'both',
+    listLayout: p.listLayout === 'none' ? 'none' : 'category',
     entryStyle: p.entryStyle === 'plain' ? 'plain' : 'boxed',
     savingsCols: Array.isArray(p.savingsCols) ? [...SAV_COLS.filter((k) => p.savingsCols.includes(k)), ...p.savingsCols.filter((k) => /^goal:[a-z0-9]{1,16}$/.test(k))] : [],
     seed: isHex(p.seed) ? p.seed.toLowerCase() : null,

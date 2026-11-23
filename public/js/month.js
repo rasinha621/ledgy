@@ -1,10 +1,10 @@
 // The month tab: KPIs, one card per category with its rows, and the charts beside them.
-import { GROUPS, DEFAULT_SAVINGS, baseLists, calcDrawdown, calcMonth, needsRowValue, listRows, sumRows, n } from '/lib/calc.js';
+import { GROUPS, DEFAULT_SAVINGS, calcDrawdown, calcMonth, needsRowValue, listRows, sumRows, n } from '/lib/calc.js';
 import { $, $$, esc, storedSet } from './dom.js';
 import { icon } from './icons.js';
 import { fmt, usd, pct, amtShow } from './format.js';
 import { state, onSummary, curMonth } from './state.js';
-import { SEC, isGroup, sumLists, secMeta, rowsOf, newRow, linkedList } from './lists.js';
+import { SEC, isGroup, sumLists, secMeta, rowsOf, newRow, linkedList, listKeys, listInfo } from './lists.js';
 import { buildMonthCharts, updateMonthCharts } from './month-charts.js';
 import { renderTabs } from './render.js';
 
@@ -56,7 +56,7 @@ function cardHtml(sec) {
   const isCol = collapsed.has(colKey(sec));
   return `<section class="card${isCol ? ' collapsed' : ''}" data-sec="${sec}">
     <div class="card-h" data-toggle-card="${sec}" role="button" tabindex="0" aria-expanded="${!isCol}" title="${isCol ? 'Expand' : 'Collapse'}">
-      <div class="card-t"><span class="swatch" style="background:var(${meta.color})"></span>${esc(meta.title)}
+      <div class="card-t"><span class="swatch${budgeted ? '' : ' drag'}" style="background:var(${meta.color})"${budgeted ? '' : ` draggable="true" data-key="${sec}" tabindex="0" role="button" aria-label="Move list" title="Click and hold to drag, or press the up and down arrow keys"`}></span>${esc(meta.title)}
         ${budgeted ? '' : `<button class="icon-btn sec-btn" data-act="sec-rename" data-key="${sec}" aria-label="Edit list" title="Edit list">${icon("pencil")}</button><button class="icon-btn sec-btn" data-act="sec-del" data-key="${sec}" aria-label="Delete list" title="Delete list">${icon("trash")}</button>`}
         <span class="total" data-k="${sec}Total"></span></div>
       ${sub}
@@ -75,7 +75,11 @@ const kpi = (k, label) => `<div class="kpi"><div class="k">${label} </div><div c
 
 export function renderMonth() {
   const m = curMonth();
-  const secs = [...GROUPS, ...baseLists(m).map((l) => l.key), ...(m.sections || []).map((s) => s.key)];
+  const lists = listKeys(m); const byCat = state.prefs.listLayout !== 'none';
+  // By category: each budget card heads a column with its lists under it. None: one flat run of cards.
+  const cards = byCat
+    ? GROUPS.map((g) => `<div class="col">${[g, ...lists.filter((k) => listInfo(k).group === g)].map(cardHtml).join('')}</div>`).join('')
+    : [...GROUPS, ...lists].map(cardHtml).join('');
   $('#view').innerHTML = `
     <div class="kpis"><div class="kpis-main">
       <div class="kpi" role="button" tabindex="0" data-act="open-income" style="cursor:pointer" title="Change your income"><div class="k">Net income </div><div class="v">${usd(m.income)}</div></div>
@@ -85,8 +89,7 @@ export function renderMonth() {
       ${kpi('remaining', 'Amount remaining')}
     </div>
     <div class="month-grid">
-      <div class="cols">${secs.map(cardHtml).join('')}
-        <button class="add-list" data-act="sec-add">${icon("plus")}<span class="lbl">Add new category</span></button></div>
+      <div class="cols${byCat ? ' by-cat' : ''}">${cards}</div>
       <aside class="side">
         <section class="card chart-card">
           <h3>Spending breakdown</h3>
@@ -94,6 +97,7 @@ export function renderMonth() {
           <div class="chart-box"><canvas id="donut" aria-label="Spending breakdown chart" role="img"></canvas></div>
           <div class="legend" id="donutLegend"></div>
         </section>
+        <button class="add-list" data-act="sec-add">${icon("plus")}<span class="lbl">Add new list</span></button>
       </aside>
     </div>`;
   buildMonthCharts(toggleDonut);

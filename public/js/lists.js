@@ -2,6 +2,7 @@
 // lists the user adds). A row of a budget group can be linked to a list of the same group to show its total.
 import { GROUPS, SECTIONS, baseLists, isLinked } from '/lib/calc.js';
 import { curMonth } from './state.js';
+import { store } from './dom.js';
 
 export const SEC = {
   wants: { title: 'Wants', color: '--wants', ph: 'Note' },
@@ -19,6 +20,22 @@ export const sumLists = (group, m = curMonth()) => [
   ...baseLists(m),
   ...(m?.sections || []).map((s) => ({ ...s, group: s.group || 'needs' })),
 ].filter((l) => !group || l.group === group);
+// The order the user gave the lists (per browser). Lists not in it yet keep their natural order after it.
+const ORDER_KEY = 'ledgy.listOrder';
+export const listKeys = (m = curMonth()) => {
+  const saved = store.getJSON(ORDER_KEY, []); const order = Array.isArray(saved) ? saved : [];
+  const rank = (k) => { const i = order.indexOf(k); return i < 0 ? Infinity : i; };
+  return sumLists(undefined, m).map((l, i) => [l.key, i]).sort(([a, i], [b, j]) => (rank(a) === rank(b) ? i - j : rank(a) - rank(b))).map(([k]) => k);
+};
+// Move list `key` next to `target` (a list, or a budget group to put it first in that group's lists).
+export function moveList(key, target, before) {
+  const keys = listKeys().filter((k) => k !== key);
+  let at;
+  if (isGroup(target)) { at = keys.findIndex((k) => listInfo(k).group === target); if (at < 0) at = keys.length; } else at = keys.indexOf(target) + (before ? 0 : 1);
+  keys.splice(at, 0, key);
+  const saved = store.getJSON(ORDER_KEY, []);
+  store.setJSON(ORDER_KEY, [...keys, ...(Array.isArray(saved) ? saved.filter((k) => !keys.includes(k)) : [])]);
+}
 export const listInfo = (key) => sumLists().find((l) => l.key === key);
 
 // The list a typed name refers to ("Groceries" or "Σ Groceries"), if any.

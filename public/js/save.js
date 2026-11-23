@@ -5,7 +5,17 @@ import { state } from './state.js';
 
 let saveTimer = null; let saving = null; let dirty = false;
 
-export function setSaveState(text, err = false) { const el = $('#saveState'); el.textContent = text; el.classList.toggle('err', err); }
+// "22 Nov, 14:05" in the browser's locale.
+function formatUpdated(iso) {
+  const d = new Date(iso);
+  if (!iso || isNaN(d)) return '';
+  return `Last updated ${d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}, ${d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })}`;
+}
+
+export function setSaveState(text, err = false) {
+  const el = $('#saveState'); el.textContent = text; el.classList.toggle('err', err);
+  $('#savedAt').textContent = formatUpdated(state.doc && state.doc.updatedAt);
+}
 export function showBanner(html) { const b = $('#banner'); b.innerHTML = html; b.hidden = !html; }
 
 export function scheduleSave() {

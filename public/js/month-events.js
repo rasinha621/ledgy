@@ -1,10 +1,10 @@
 // Editing on the month tab: typing amounts and labels, adding and deleting rows, quick-add on collapsed cards,
 // keyboard navigation between rows, pasting columns from a spreadsheet, and the chart toggles.
 import { n } from '/lib/calc.js';
-import { $, onActivate } from './dom.js';
+import { $, $$, onActivate } from './dom.js';
 import { parseAmount, amtText, amtShow } from './format.js';
 import { state, onSummary, curMonth } from './state.js';
-import { isGroup, findList, rowsOf, newRow, linkedList } from './lists.js';
+import { isGroup, findList, rowsOf, newRow, linkedList, listInfo, moveList } from './lists.js';
 import { scheduleSave } from './save.js';
 import { rowCtx, focusRow, linkedValue, renderMonth, refresh, replaceCard, toggleCard, toggleDonut } from './month.js';
 import { setLink, showPop, hidePop, popKeydown } from './picker.js';
@@ -77,10 +77,56 @@ function onClick(e) {
   }
 }
 
+// Rearranging lists: drag a list's handle onto another card, or press the arrow keys on the handle.
+let dragKey = null;
+const byCat = () => state.prefs.listLayout !== 'none';
+// In columns a list stays under its own budget card; in the flat layout it can go next to any list.
+const canDrop = (sec) => dragKey && sec !== dragKey && (byCat() ? listInfo(dragKey).group === (isGroup(sec) ? sec : listInfo(sec)?.group) : !isGroup(sec));
+const clearDrop = () => $$('.drop-before, .drop-after, .dragging').forEach((el) => el.classList.remove('drop-before', 'drop-after', 'dragging'));
+function reorder(key, target, before) {
+  moveList(key, target, before); renderMonth();
+  $(`.drag[data-key="${key}"]`)?.focus();
+}
+const dropBefore = (e, card) => {
+  const r = card.getBoundingClientRect();
+  return byCat() ? e.clientY < r.top + r.height / 2 : e.clientX < r.left + r.width / 2;
+};
+function onDragStart(e) {
+  const h = e.target.closest?.('.drag'); if (!h) return;
+  dragKey = h.dataset.key; const card = h.closest('.card');
+  e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', dragKey); e.dataTransfer.setDragImage(card, 20, 20);
+  card.classList.add('dragging');
+}
+function onDragOver(e) {
+  const card = e.target.closest?.('.card[data-sec]');
+  if (!card || !canDrop(card.dataset.sec)) return;
+  e.preventDefault();
+  $$('.drop-before, .drop-after').forEach((el) => el.classList.remove('drop-before', 'drop-after'));
+  card.classList.add(isGroup(card.dataset.sec) || !dropBefore(e, card) ? 'drop-after' : 'drop-before');
+}
+function onDrop(e) {
+  const card = e.target.closest?.('.card[data-sec]');
+  if (!card || !canDrop(card.dataset.sec)) return;
+  e.preventDefault();
+  const key = dragKey; const sec = card.dataset.sec; const before = dropBefore(e, card);
+  dragKey = null; clearDrop(); reorder(key, sec, before);
+}
+function onDragKey(e) {
+  const t = e.target;
+  if (!t.classList?.contains('drag') || !['ArrowUp', 'ArrowDown'].includes(e.key)) return false;
+  e.preventDefault();
+  const up = e.key === 'ArrowUp'; const key = t.dataset.key; const card = t.closest('.card');
+  const sib = up ? card.previousElementSibling : card.nextElementSibling;
+  if (!sib?.classList.contains('card')) return true;
+  dragKey = key; const ok = canDrop(sib.dataset.sec); dragKey = null;
+  if (ok) reorder(key, sib.dataset.sec, up);
+  return true;
+}
+
 // Enter moves to the same field of the next row (Shift+Enter: previous), adding a row at the end.
 function onKeydown(e) {
   const t = e.target;
-  if (popKeydown(e, t)) return;
+  if (popKeydown(e, t) || onDragKey(e)) return;
   if (e.key !== 'Enter' || !(isAmt(t) || isLbl(t))) return;
   e.preventDefault();
   const ctx = rowCtx(t);
@@ -136,6 +182,10 @@ export function initMonthEvents() {
   view.addEventListener('focusin', onFocusIn);
   view.addEventListener('focusout', onFocusOut);
   view.addEventListener('paste', onPaste);
+  view.addEventListener('dragstart', onDragStart);
+  view.addEventListener('dragover', onDragOver);
+  view.addEventListener('drop', onDrop);
+  view.addEventListener('dragend', () => { dragKey = null; clearDrop(); });
   onActivate(view, '[data-toggle-card]', (el) => toggleCard(el.dataset.toggleCard), 'button');
   onActivate(view, '[data-drill="donut"]', (el) => toggleDonut(el.dataset.kind));
   onActivate(view, '[data-toggle="taxes"]', () => { state.hideTaxes = !state.hideTaxes; refresh(); });

@@ -1,4 +1,4 @@
-// Settings > Customize: the seed color picker. Preset chips, plus a custom color from OKLCH hue and chroma sliders.
+// The Customization dialog's seed color picker. Preset chips, plus a custom color from OKLCH hue and chroma sliders.
 import { hexToOklch, oklchToHex, isHex } from '/seed.js';
 import { $, $$ } from './dom.js';
 import { SEED_PRESETS, DEFAULT_SEED } from './prefs.js';
@@ -8,7 +8,7 @@ export const draftSeed = () => draft;
 
 const hueTrack = () => `linear-gradient(90deg, ${Array.from({ length: 13 }, (_, i) => `oklch(.7 .15 ${i * 30})`).join(', ')})`;
 const chromaTrack = (h) => `linear-gradient(90deg, oklch(.6 0 ${h}), oklch(.6 .2 ${h}))`;
-const form = () => $('#settingsForm');
+const form = () => $('#customForm');
 
 function renderChips() {
   const chip = (seed, label) => `<button type="button" class="seed${draft === seed ? ' on' : ''}" data-seed="${seed || ''}" aria-label="${label}" aria-pressed="${draft === seed}" style="--c:${seed || DEFAULT_SEED}">${seed ? '' : '<span>A</span>'}</button>`;
@@ -24,7 +24,7 @@ function syncSliders() {
   f.seedHue.style.setProperty('--track', hueTrack()); f.seedChroma.style.setProperty('--track', chromaTrack(Math.round(h)));
 }
 
-// Start editing from the saved seed (null = default) when the settings dialog opens.
+// Start editing from the saved seed (null = default) when the customization dialog opens.
 export function resetSeedPicker(seed) { draft = seed; panelOpen = false; renderChips(); }
 
 export function initSeedPicker(changed) {
