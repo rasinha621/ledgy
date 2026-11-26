@@ -12,6 +12,7 @@ import { setTab } from './render.js';
 import { openListDialog, deleteList } from './dialogs.js';
 import { openImport, openNew } from './year-dialogs.js';
 import { openIncome } from './income-panel.js';
+import { toggleRowMenu } from './row-menu.js';
 
 const isAmt = (t) => t.classList.contains('amt');
 const isLbl = (t) => t.classList.contains('lbl');
@@ -71,10 +72,7 @@ function onClick(e) {
     const sec = t.dataset.add; const rows = rowsOf(curMonth(), sec);
     rows.push(newRow(sec)); scheduleSave(); renderMonth(); focusRow(sec, rows.length - 1); return;
   }
-  if (t.classList.contains('del')) {
-    const ctx = rowCtx(t); ctx.rows.splice(ctx.i, 1); scheduleSave(); renderMonth();
-    focusRow(ctx.sec, Math.min(ctx.i, ctx.rows.length - 1));
-  }
+  if (t.classList.contains('row-menu')) toggleRowMenu(t);
 }
 
 // Rearranging lists: drag a list's handle onto another card, or press the arrow keys on the handle.

@@ -29,6 +29,16 @@ export function focusRow(sec, i, cls = 'amt') {
 // What a linked amount shows: its list's total.
 export const linkedValue = (row) => fmt(needsRowValue(row, curMonth()));
 
+// A Wants / Needs row paid from a savings goal gets a savings-colored edge on its amount, and its note says which goal.
+const goalOf = (row) => (row?.goal ? (state.doc.settings.goals || []).find((g) => g.id === row.goal) : null);
+const goalTip = (row) => { const g = goalOf(row); return g ? `Paid from ${g.name}` : ''; };
+export function markGoal(input, row) {
+  const li = input.closest('.row'); const lbl = li?.querySelector('.lbl'); if (!lbl) return;
+  const tip = goalTip(row);
+  li.classList.toggle('goal', Boolean(tip));
+  if (tip) { lbl.dataset.tip = tip; lbl.setAttribute('aria-description', tip); } else { delete lbl.dataset.tip; lbl.removeAttribute('aria-description'); }
+}
+
 function rowHtml(sec, r, i) {
   const link = linkedList(sec, r);
   const { ph } = secMeta(sec);
@@ -36,10 +46,11 @@ function rowHtml(sec, r, i) {
   const sum = sec === 'savings' && i < DEFAULT_SAVINGS.length ? `Summary: ${DEFAULT_SAVINGS[i]}. ` : '';
   const hint = isGroup(sec) ? ` title="${sum}${link ? `Total of ${esc(link.title)}. To unlink, type a number.` : 'Type an amount or pick a list to show its total.'}"` : '';
   const blank = !link && (r.amount === null || r.amount === undefined) && !r.label;
-  return `<li class="row${blank ? ' blank' : ''}" data-i="${i}">
+  const paid = sec !== 'savings' && isGroup(sec) ? goalTip(r) : '';
+  return `<li class="row${blank ? ' blank' : ''}${paid ? ' goal' : ''}" data-i="${i}">
     <label class="tf"><input class="amt ${n(r.amount) < 0 ? 'neg' : ''} ${link ? 'linked' : ''}" data-i="${i}" inputmode="decimal" autocomplete="off" value="${val}" placeholder=" " aria-label="Amount"${hint}><span>Amount</span></label>
-    <input class="lbl" data-i="${i}" value="${esc(r.label)}" placeholder="${link ? `Σ ${esc(link.title)}` : ph}" aria-label="${ph}">
-    <button class="icon-btn del" data-i="${i}" aria-label="Delete row" title="Delete row">${icon("trash")}</button>
+    <input class="lbl" data-i="${i}" value="${esc(r.label)}" placeholder="${link ? `Σ ${esc(link.title)}` : ph}" aria-label="${ph}"${paid ? ` data-tip="${esc(paid)}" aria-description="${esc(paid)}"` : ''}>
+    <button class="icon-btn row-menu" data-i="${i}" aria-haspopup="menu" aria-expanded="false" aria-label="Row options" title="Link to a goal or delete">${icon("chevron-down", "caret")}</button>
   </li>`;
 }
 

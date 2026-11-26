@@ -261,11 +261,11 @@
   .slider input::-moz-range-thumb { @apply size-3.5 rounded-full border-[3px] border-card bg-accent; }
 
   /* Popover, tooltips */
-  #sumPop { @apply fixed z-50 rounded-lg border border-line bg-card p-1 shadow-lg; }
-  #sumPop .pop-h { @apply px-3 pt-2 pb-1 text-xs text-ink-2; }
-  #sumPop button { @apply flex min-h-10 w-full cursor-pointer items-center justify-between gap-4 rounded-md border-0 bg-transparent px-3 py-2 text-left text-sm text-ink tabular-nums hover:bg-ink/10; }
-  #sumPop button.hi { @apply bg-ink/10; }
-  #sumPop button.cur { @apply font-medium text-accent; }
+  #sumPop, #rowMenu { @apply fixed z-50 rounded-lg border border-line bg-card p-1 shadow-lg; }
+  #sumPop .pop-h, #rowMenu .pop-h { @apply px-3 pt-2 pb-1 text-xs text-ink-2; }
+  #sumPop button, #rowMenu button { @apply flex min-h-10 w-full cursor-pointer items-center justify-between gap-4 rounded-md border-0 bg-transparent px-3 py-2 text-left text-sm text-ink tabular-nums hover:bg-ink/10; }
+  #sumPop button.hi, #rowMenu button:focus-visible { @apply bg-ink/10; }
+  #sumPop button.cur, #rowMenu button.cur { @apply font-medium text-accent; }
   #tip { @apply pointer-events-none fixed z-[100] max-w-[200px] rounded-md px-2 py-1 text-xs opacity-0 transition-opacity duration-150 [overflow-wrap:anywhere]; background: var(--tooltip-bg); color: var(--tooltip-fg); }
   #tip.on { opacity: 1; }
   #chartTip { @apply pointer-events-none fixed z-[100] max-w-xs rounded-lg border border-line bg-card px-4 py-3 text-sm text-ink-2 opacity-0 shadow-lg transition-opacity duration-150; }
@@ -327,6 +327,19 @@ input[type=number]::-webkit-outer-spin-button, input[type=number]::-webkit-inner
 .row .tf input:not(:placeholder-shown) + span { opacity: 0; }
 @media (max-width: 640px) { .row .tf input { height: 2rem; } .row .tf span { top: .25rem; } }
 :root[data-density="compact"] .row .tf span, :root[data-density="compact"] .row .tf input:focus + span { top: .25rem; }
+/* Row menu: a caret that turns over while its menu is open, and the menu's delete item */
+.icon-btn.row-menu:hover { background: color-mix(in oklab, currentColor 10%, transparent); color: inherit; }
+.icon-btn.row-menu[aria-expanded="true"] { opacity: 1; }
+.icon-btn.row-menu .caret { width: 16px; height: 16px; transition: transform .15s ease; }
+.icon-btn.row-menu[aria-expanded="true"] .caret { transform: rotate(180deg); }
+@media (prefers-reduced-motion: reduce) { .icon-btn.row-menu .caret { transition: none; } }
+#rowMenu { min-width: 200px; }
+#rowMenu hr { margin: 4px 0; border: 0; border-top: 1px solid var(--line); }
+#rowMenu button.danger { justify-content: flex-start; color: var(--over); }
+#rowMenu button.danger > span { display: inline-flex; align-items: center; gap: .5rem; white-space: nowrap; }
+#rowMenu button.danger .ico { width: 16px; height: 16px; }
+/* A spend paid from a savings goal: a savings-colored edge on its amount */
+.row.goal input.amt { box-shadow: inset 3px 0 0 var(--savings); }
 /* Button labels preference: "icons" visually hides the text of the header navigation only (still read by screen readers); "text" hides the icons */
 :root[data-labels="icons"] header.top .lbl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 :root[data-labels="icons"] header.top .btn:has(> .lbl):not(.primary) { padding-inline: .75rem; }
