@@ -10,11 +10,19 @@ import { charts, chartTheme, tooltip, ringDataset, paintRing, drillHandlers, leg
 
 let paintPie = null; // redraws the pie of the current Summary
 
+// A goal's balance: saved minus spends paid from it. Met once the amount saved reaches the target.
+function goalCell(g) {
+  const spent = g.spent ? ` · Spent ${usd(g.spent)}` : '';
+  const target = g.target > 0 ? ` · Goal ${usd(g.target)}` : '';
+  const met = g.target > 0 && g.saved >= g.target - 0.005;
+  return `<td${met ? ' class="met"' : ''} title="${esc(`Saved ${usd(g.saved)}${spent}${target}${met ? ' (met)' : ''}`)}">${usd(g.total)}</td>`;
+}
+
 // A year total, colored against its annual limit or goal target.
 function totalCell([, v, limit, goal]) {
+  if (goal) return goalCell(goal);
   if (!(limit > 0)) return `<td>${usd(v)}</td>`;
   const met = v >= limit - 0.005;
-  if (goal) return met ? `<td class="met" title="Goal met">${usd(v)}</td>` : `<td title="Goal: ${esc(usd(limit))}">${usd(v)}</td>`;
   if (v > limit + 0.005) return `<td class="over" title="More than the limit of ${esc(usd(limit))}">${usd(v)}</td>`;
   if (met) return `<td class="met" title="Yearly limit reached">${usd(v)}</td>`;
   return `<td title="Limit: ${esc(usd(limit))}">${usd(v)}</td>`;
@@ -27,7 +35,7 @@ function summaryHtml(s) {
     ['Total Savings', s.totalSavings], ['Cash', s.cashBalance], ['Investing', s.investingSavings],
     ['Roth', s.roth, settings.limitRoth], ['HSA', s.hsa, settings.limitHsa], ['401k', s.k401, settings.limit401k],
   ].filter(([h], i) => i < 4 || savingsCols.includes(h));
-  cols.push(...(s.goals || []).filter((g) => savingsCols.includes(goalCol(g.id))).map((g) => [g.name, g.total, g.target, true]));
+  cols.push(...(s.goals || []).filter((g) => savingsCols.includes(goalCol(g.id))).map((g) => [g.name, g.total, g.target, g]));
   const draw = calcDrawdown(state.doc);
   const over = (p) => (p > 1 ? 'over' : '');
   const rows = s.months.map((c, i) => `<tr data-goto="${i}" style="cursor:pointer">
